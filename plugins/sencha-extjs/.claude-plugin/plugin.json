@@ -1,0 +1,29 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "sencha-extjs",
+  "version": "0.1.0",
+  "description": "Sencha Ext JS Claude Code Mod",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Marc Gusmano",
+    "email": "mgusmano@yahoo.com"
+  },
+  "skills": [
+    "./"
+  ],
+  "mcpServers": {
+    "deploy-api": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/server.js"
+      ]
+    }
+  },
+  "lspServers": "./.lsp.json",
+  "channels": [
+    {
+      "server": "sencha-extjs",
+      "displayName": "sencha-extjs"
+    }
+  ]
+}
