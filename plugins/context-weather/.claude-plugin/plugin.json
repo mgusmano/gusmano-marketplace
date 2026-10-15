@@ -1,6 +1,6 @@
 {
   "name": "context-weather",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A weather-style gauge of the context window, drawn above the prompt.",
     "author": {
     "name": "Marc Gusmano"
