@@ -62,7 +62,7 @@ export const register: Register = on => {
         <Text color={color}>{bar}</Text>
         <Text dimColor>
           {' '}
-          mjg {pct}% context, {word}
+          {pct}% context, {word}
         </Text>
       </Box>
     )
