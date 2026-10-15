@@ -1,5 +1,13 @@
 {
   "mcpServers": {
+    "extjs-tools": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp/ExtJSToolsMCPServer.mjs"
+      ],
+      "env": {}
+    },
     "lsp-bridge": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/dist/mcp-lsp-server.js"]

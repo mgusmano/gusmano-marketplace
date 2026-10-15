@@ -4,7 +4,7 @@ import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
 export type Turn = { seconds: number; tools: number }
 
-const VERSION_STRING = 'v0.0.13'
+const VERSION_STRING = 'v0.0.18'
 
 const PANE = 'sencha-extjs'
 const PREFIX = 'mcp__extjs-tools__'
@@ -16,6 +16,8 @@ const LOGO_PNG = 'assets/extjs-logo.png'
 const tail = (p: string, max = 46) => (p.length > max ? '…' + p.slice(-(max - 1)) : p)
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
+
+const status = atom({ plugin: 'sencha-extjs', key: 'status' } as const, [] as Message[])
 const run = atom({ plugin: 'sencha-extjs', key: 'run' } as const, {})
 const steps = atom({ plugin: 'sencha-extjs', key: 'steps' } as const, [])
 const messages = atom({ plugin: 'sencha-extjs', key: 'messages' } as const, [] as Message[])
@@ -90,6 +92,8 @@ export function subjectOf(e: ToolCallInput): string | undefined {
   }
 }
 
+let tool_use_id = '';
+
 export const register: Register = on => {
   let startedAt = 0
   let tools = 0
@@ -100,7 +104,7 @@ export const register: Register = on => {
   let taskId: string | undefined
 
   on('session.start', async ($, e, next) => {
-    //$.ui.log(`session.start: At ${new Date().toLocaleString()}`)
+    $.ui.log(`session.start: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
     await $.command.register({ name: 'extjs', description: 'Open the Sencha Ext JS side pane' })
     $.clock.after(500, () => {
       //void update($, messages, list => [...list, { title: 'session.start:timer', message: '500ms elapsed' }])
@@ -109,6 +113,8 @@ export const register: Register = on => {
     await update($, messages, list => [...list, { title: 'session.start', message: `At ${new Date().toLocaleString()}` }]);
     return next(e)
   })
+
+
 
   on('session.end', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'session.end', message: JSON.stringify(e, null, spaces) }]);
@@ -203,19 +209,23 @@ export const register: Register = on => {
   })
 
   on('turn.complete', async ($, e, next) => {
+    await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify(e, null, spaces) }]);
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const turn: Turn = { seconds, tools }
     //await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify({ usage: e.usage, seconds, tools }, null, spaces) }]);
-    await update($, messages, list => [...list, { title: 'turn.complete', message: `${dur}` }]);
+    await update($, messages, list => [...list, { title: 'turn.complete', message: `${dur} ${tool_use_id}` }]);
     const result = await next(e)
     return result;
     //return { ...result, text: `That turn took ${seconds}s` }
   })
 
   on('tool.call', async ($, e, next) => {
-    //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
+    tool_use_id = e.tool_use_id;
+
+   await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
+    await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
     const id = e.tool_use_id
     const tool = e.tool.startsWith(PREFIX) ? e.tool.slice(PREFIX.length) : e.tool
@@ -241,11 +251,14 @@ export const register: Register = on => {
       } catch {
         // the start result was not JSON; keep the previous task id
       }
+      let statusMessage = (JSON.parse(text) as { statusMessage?: string }).statusMessage ?? ''
+      await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
       await update($, messages, list => [...list, { title: 'task-start', message: text }])
     }
     if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
-      let statusJson = JSON.parse(text);
-      await update($, messages, list => [...list, { title: 'task-get', message: statusJson.statusMessage }])
+      let statusMessage = (JSON.parse(text) as { statusMessage?: string }).statusMessage ?? ''
+      await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
+      await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
     }
 
     const failed = ran.isError === true || ran.deny !== undefined
@@ -302,13 +315,13 @@ export const register: Register = on => {
     // drawing swaps it for a coloured chip so the live view is not doubled.
     const text = e.props.text
     if (!text.startsWith(ANSWER_PREFIX)) return next(e)
-    const body = <Markdown text={text.slice(ANSWER_PREFIX.length)} />
+    const body = <Markdown text={'Hello2 ' + text.slice(ANSWER_PREFIX.length)} />
     // The chip marks a turn that an extjs command-message started: only those
     // draw it, every other prefixed message shows its content without the label.
     if (hasCommandMessage && (isExtjsPrompt || isReExtPrompt)) {
       return (
         <Box flexDirection="column">
-          <Text color="yellow" bold>{ANSWER_PREFIX.trim()}</Text>
+          <Text color="yellow" bold>hello {ANSWER_PREFIX.trim()}</Text>
           {body}
         </Box>
       )
@@ -331,11 +344,47 @@ export const register: Register = on => {
     )
   });
 
+  on('ui.render', { component: 'ToolProgress', requestId: tool_use_id }, async ($, e, next) => {
+    await update($, messages, list => [...list, { title: 'ui.render:ToolProgress', message: JSON.stringify(e, null, spaces) }]);
+    const { Box, Text } = $.ui.resolve(e)
+    return Box({
+      flexDirection: 'row',
+      columnGap: 1,
+      children: [
+        Text({ color: 'cyan', children: ['⚡ Custom Progress:'] }),
+        // Call next(e) to retain engine defaults, or return your own custom elements
+        await next(e),
+      ]
+    });
+  })
+
+    on('ui.render', { component: 'ToolUse', requestId: tool_use_id }, async ($, e, next) => {
+    await update($, messages, list => [...list, { title: 'ui.render:ToolUse', message: JSON.stringify(e, null, spaces) }]);
+    const { Box, Text } = $.ui.resolve(e)
+    return Box({
+      flexDirection: 'row',
+      columnGap: 1,
+      children: [
+        Text({ color: 'cyan', children: ['⚡ Custom Tool Use:'] }),
+        // Call next(e) to retain engine defaults, or return your own custom elements
+        await next(e),
+      ]
+    });
+  })
+
+
+  // on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
+  //   await update($, messages, list => [...list, { title: 'a', message: JSON.stringify(e, null, spaces) }]);
+  //   return next(e)
+  // })
+
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const r: UpgradeRun = await read($, run)
     const list: UpgradeStep[] = await read($, steps)
     const feed: Message[] = await read($, messages)
+    const statuses: Message[] = await read($, status)
     const facts: { k: string; v: string; color?: string }[] = []
     if (r.projectType) {
       facts.push({
@@ -371,6 +420,7 @@ export const register: Register = on => {
             await update($, run, () => ({}))
             await update($, steps, () => [])
             await update($, messages, () => [])
+            await update($, status, () => [])
           }}></Button>
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
@@ -388,6 +438,21 @@ export const register: Register = on => {
             </Text>
           ))
         }
+
+        <Box marginTop={2}><Text color="yellow" italic>STATUS</Text></Box>
+        {
+          statuses.length === 0 ? (
+            <Text dimColor>No status yet.</Text>
+          ) : (
+            statuses.map((s, i) => (
+              <Text key={`step${i}`}>
+                <Text color="cyan">{s.title}</Text>
+                <Text dimColor> {s.message}</Text>
+              </Text>
+            ))
+          )
+        }
+
         <Box marginTop={2}><Text color="yellow" italic>TOOL CALLS</Text></Box>
         {
           list.length === 0 ? (
@@ -431,6 +496,7 @@ export const register: Register = on => {
             await update($, run, () => ({}))
             await update($, steps, () => [])
             await update($, messages, () => [])
+            await update($, status, () => [])
           }}></Button>
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>

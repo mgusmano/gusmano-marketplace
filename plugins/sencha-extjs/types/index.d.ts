@@ -25,6 +25,11 @@ export type Message = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'sencha-extjs': { run: UpgradeRun; steps: UpgradeStep[]; messages: Message[] }
+    'sencha-extjs': { 
+      status: Message[]; 
+      run: UpgradeRun; 
+      steps: UpgradeStep[]; 
+      messages: Message[] 
+    }
   }
 }
