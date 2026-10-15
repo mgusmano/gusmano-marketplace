@@ -344,7 +344,8 @@ export const register: Register = on => {
     )
   });
 
-  on('ui.render', { component: 'ToolProgress', requestId: tool_use_id }, async ($, e, next) => {
+  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => {
+    if (e.requestId !== tool_use_id) return next(e)
     await update($, messages, list => [...list, { title: 'ui.render:ToolProgress', message: JSON.stringify(e, null, spaces) }]);
     const { Box, Text } = $.ui.resolve(e)
     return Box({
@@ -358,7 +359,8 @@ export const register: Register = on => {
     });
   })
 
-    on('ui.render', { component: 'ToolUse', requestId: tool_use_id }, async ($, e, next) => {
+  on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
+    if (e.requestId !== tool_use_id) return next(e)
     await update($, messages, list => [...list, { title: 'ui.render:ToolUse', message: JSON.stringify(e, null, spaces) }]);
     const { Box, Text } = $.ui.resolve(e)
     return Box({
