@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "sencha-extjs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sencha Ext JS Claude Code Mod",
   "types": "./types/index.d.ts",
   "author": {
