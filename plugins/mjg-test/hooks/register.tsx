@@ -49,7 +49,7 @@ export const register: Register = (on: On) => {
     const timerLabel = checksTimer ? 'stop timer' : 'start timer'
     return (
       <Box flexDirection="row" marginTop={0}>
-        <Text>hi4</Text>
+        <Text>hi2</Text>
         <Box borderStyle='single' marginLeft={1} paddingX={1} paddingY={0}>
           <Button plain={true} key="http" label="http" onPress={async () => {
             //const LATEST_URL = 'https://raw.githubusercontent.com/hellosverre/claude-skins/main/.claude-plugin/plugin.json'
