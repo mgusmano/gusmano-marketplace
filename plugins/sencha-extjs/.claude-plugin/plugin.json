@@ -19,6 +19,14 @@
         "${CLAUDE_PLUGIN_ROOT}/mcp/ExtJSToolsMCPServer.mjs"
       ],
       "env": {}
+    },
+    "extjs-example": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp/ExtJSExampleMCPServer.mjs"
+      ],
+      "env": {}
     }
   },
   "lspServers": "./.lsp.json"

@@ -1,6 +1,6 @@
 ---
 name: extjs-discover
-description: Discovers Ext JS project details within a repository or workspace, including project location, Sencha Cmd usage, and the Ext JS framework version. v01
+description: Discovers Ext JS project details within a repository or workspace, including project location, Sencha Cmd usage, and the Ext JS framework version. v02
 ---
 
 # Ext JS Discover Expert

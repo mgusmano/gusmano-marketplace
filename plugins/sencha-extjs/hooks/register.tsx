@@ -1,21 +1,77 @@
-import type { Register, ToolCallInput } from 'claude-code'
+import type { Hook, Register, RenderInput, ToolCallInput } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
 export type Turn = { seconds: number; tools: number }
 
-const VERSION_STRING = 'v0.0.18'
+const VERSION_STRING = 'v0.0.20'
 
 const PANE = 'sencha-extjs'
 const PREFIX = 'mcp__extjs-tools__'
-const spaces = 0
-const ANSWER_PREFIX = 'Sencha AI Upgrade: '
-const LOGO_SVG = 'assets/extjs-logo.svg'
-const LOGO_PNG = 'assets/extjs-logo.png'
+const spaces = 2
+//const LOGO_SVG = 'assets/extjs-logo.svg'
+//const LOGO_PNG = 'assets/extjs-logo.png'
+const LOGO_SVG = 'assets/rapid.svg'
+const LOGO_PNG = 'assets/rapid.png'
+
+const labelFor = (component: string): string => {
+  switch (component) {
+    case 'UserMessage': return 'prompt'
+    case 'AssistantMessage': return 'message'
+    default: return component
+  }
+}
+
+const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput<'UserMessage' | 'AssistantMessage'>) => {
+  //$.ui.log(`renderMessage: ${e.component}`)
+  //$.ui.log(`renderMessage: ${JSON.stringify(e,null,2)}`)
+  //<Text color="rgb(25,63,88)" backgroundColor="rgb(5,6,5)"  weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
+  const text = e.props.text
+  if (e.surface !== 'terminal') {
+    const { Box, Text, Svg } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="row" alignItems="flex-start">
+        <Box marginTop={0.5} flexShrink={0}>
+          <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
+        </Box>
+        <Box marginLeft={0.5}>
+          <Text>
+            <Text color="cyan" weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
+            <Text color="rgb(145,186,76)" weight="regular">{text}</Text>
+          </Text>
+        </Box>
+      </Box>
+    )
+  }
+  // terminal
+  const { Box, Text, Image } = $.ui.resolve(e)
+  return (
+    <Box flexDirection="row" alignItems="flex-start">
+      <Box marginTop={0.5} flexShrink={0}>
+        <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
+      </Box>
+      <Box marginLeft={0.5}>
+        <Text>
+          <Text color="cyan" weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
+          <Text color="rgb(145,186,76)" weight="regular">{text}</Text>
+        </Text>
+      </Box>
+    </Box>
+  )
+}
 
 const tail = (p: string, max = 46) => (p.length > max ? '…' + p.slice(-(max - 1)) : p)
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
+// Tool output that is not a JSON object yields {} instead of throwing
+const parseObj = (text: string): Record<string, unknown> => {
+  try {
+    const value: unknown = JSON.parse(text)
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
 
 const status = atom({ plugin: 'sencha-extjs', key: 'status' } as const, [] as Message[])
 const run = atom({ plugin: 'sencha-extjs', key: 'run' } as const, {})
@@ -92,12 +148,10 @@ export function subjectOf(e: ToolCallInput): string | undefined {
   }
 }
 
-let tool_use_id = '';
-
 export const register: Register = on => {
+  let tool_use_id = ''
   let startedAt = 0
   let tools = 0
-  let prefixedAnswer = false
   let hasCommandMessage = false
   let isExtjsPrompt = false
   let isReExtPrompt = false
@@ -108,13 +162,17 @@ export const register: Register = on => {
     await $.command.register({ name: 'extjs', description: 'Open the Sencha Ext JS side pane' })
     $.clock.after(500, () => {
       //void update($, messages, list => [...list, { title: 'session.start:timer', message: '500ms elapsed' }])
-      void $.ui.open({ id: PANE, title: 'Sencha Ext JS' })
+      // No surface attached yet (or headless run): skip the pane instead of an unhandled rejection
+      $.ui.open({ id: PANE, title: 'Sencha Ext JS' }).catch(() => undefined)
     })
-    await update($, messages, list => [...list, { title: 'session.start', message: `At ${new Date().toLocaleString()}` }]);
+    await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${VERSION_STRING}, time: ${new Date().toLocaleString()}` }]);
     return next(e)
   })
 
-
+  on('ui.open', async ($, e, next) => {
+    $.ui.log(`ui.open: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
+    return next(e)
+  })
 
   on('session.end', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'session.end', message: JSON.stringify(e, null, spaces) }]);
@@ -136,7 +194,11 @@ export const register: Register = on => {
 
   on('command.run', { command: 'extjs' }, async $ => {
     await update($, messages, list => [...list, { title: 'command.run', message: `command 'extjs' executed.` }]);
-    await $.ui.open({ id: PANE, title: 'Sencha Ext JS' })
+    try {
+      await $.ui.open({ id: PANE, title: 'Sencha Ext JS' })
+    } catch {
+      return { text: 'Sencha Ext JS pane could not open: no surface is attached' }
+    }
     return { text: 'Sencha Ext JS pane opened' }
   })
 
@@ -148,7 +210,7 @@ export const register: Register = on => {
   })
 
   on('ui.press', async ($, e, next) => {
-    //await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
+    await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
     if (e.plugin !== $.plugin.name || e.requestId !== PANE) return next(e)
     if (e.element === 'close') await $.ui.close({ id: PANE }).catch(() => undefined)
     return next(e)
@@ -160,7 +222,8 @@ export const register: Register = on => {
   // })
 
   on('prompt.submit', async ($, e, next) => {
-    await update($, messages, list => [...list, { title: 'prompt.submit', message: JSON.stringify(e, null, spaces) }]);
+    //await update($, messages, list => [...list, { title: 'prompt.submit', message: JSON.stringify(e, null, spaces) }]);
+    await update($, messages, list => [...list, { title: 'prompt.submit: ', message: e.text }]);
     //$.ui.status(`status: Started At ${startedAt}`)
     //$.ui.toast(`toast: Started At ${startedAt}`)
     //$.ui.log(`log: Started At ${startedAt}`)
@@ -175,46 +238,26 @@ export const register: Register = on => {
     const inner = hasCommandMessage ? e.text.slice(begin + 17, end).trim() : ''
     isExtjsPrompt = inner.startsWith('extjs')
     isReExtPrompt = inner.startsWith('reext')
-    await update($, messages, list => [...list, { title: 'turn.start', message: `command: ${String(hasCommandMessage)} · extjs: ${String(isExtjsPrompt)} · reext: ${String(isReExtPrompt)} · ${JSON.stringify(inner.slice(0, 60))}` }]);
+    //await update($, messages, list => [...list, { title: 'turn.start: ', message: `hasCommandMessage: ${String(hasCommandMessage)} · isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)} · commandMessage: ${JSON.stringify(inner.slice(0, 60))}` }]);
+    await update($, messages, list => [...list, { title: 'turn.start: ', message: `hasCommandMessage: ${String(hasCommandMessage)} · isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)} · commandMessage: ${inner.slice(0, 60)}` }]);
     startedAt = await $.clock.now()
     tools = 0
-    prefixedAnswer = false
     return next(e)
   })
 
   on('turn.step', async function* ($, e, next) {
     //await update($, messages, list => [...list, { title: 'turn.step', message: JSON.stringify(e, null, spaces) }]);
-    await update($, messages, list => [...list, { title: 'turn.step', message: JSON.stringify({ index: e.index, messageCount: e.messageCount }, null, spaces) }]);
-    // The shown text is the concatenation of the `text` chunks, so rewrite the
-    // first one to prefix the answer. Every step is its own model request, so
-    // anything that happened between steps (a file read, an MCP call) does not
-    // let an earlier prefix stand: this step's first text run earns its own.
-    // Within a step, a tool call (or the thinking and arguments around it)
-    // breaks the answer text, so the text after it is a new run and is
-    // prefixed too. `engine` chunks are the envelope, not a break, and are
-    // ignored so a single streamed text block is never split into two prefixes.
-    // Never re-prefix text that already carries the prefix, so a stacked or
-    // replayed hook cannot write it more than once.
-    prefixedAnswer = false
-    for await (const c of next(e)) {
-      if (c.kind !== 'text' && c.kind !== 'engine') prefixedAnswer = false
-      if (c.kind === 'text' && c.text.length > 0 && !prefixedAnswer && !c.text.startsWith(ANSWER_PREFIX)) {
-        prefixedAnswer = true
-        yield { ...c, text: `${ANSWER_PREFIX}${c.text}` }
-      } else {
-        yield c
-        //yield { ...c, text: `plain: ` }
-      }
-    }
+    await update($, messages, list => [...list, { title: 'turn.step: ', message: `index: ${e.index}, messageCount: ${e.messageCount}` }]);
+    for await (const c of next(e)) yield c
   })
 
   on('turn.complete', async ($, e, next) => {
-    await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify(e, null, spaces) }]);
+    //await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify(e, null, spaces) }]);
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const turn: Turn = { seconds, tools }
     //await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify({ usage: e.usage, seconds, tools }, null, spaces) }]);
-    await update($, messages, list => [...list, { title: 'turn.complete', message: `${dur} ${tool_use_id}` }]);
+    await update($, messages, list => [...list, { title: 'turn.complete: ', message: `time: ${dur}` }]);
     const result = await next(e)
     return result;
     //return { ...result, text: `That turn took ${seconds}s` }
@@ -223,9 +266,9 @@ export const register: Register = on => {
   on('tool.call', async ($, e, next) => {
     tool_use_id = e.tool_use_id;
 
-   await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
+    //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
-    await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
+    //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
     const id = e.tool_use_id
     const tool = e.tool.startsWith(PREFIX) ? e.tool.slice(PREFIX.length) : e.tool
@@ -237,8 +280,7 @@ export const register: Register = on => {
 
     if (tool === 'job-status') {
       const result = ran.result as Array<{ text?: string }> | undefined
-      const status: any = result?.[0]?.text
-      const statusJson = JSON.parse(status)
+      const statusJson = parseObj(result?.[0]?.text ?? '') as { state?: string; percent?: number; message?: string }
       //await update($, messages, list => [...list, { title: 'status', message: JSON.stringify(result?.[0]?.text, null, spaces) }]);
       await update($, messages, list => [...list, { title: 'status', message: `${statusJson.state}: ${statusJson.percent}% - ${statusJson.message}` }]);
     }
@@ -246,17 +288,15 @@ export const register: Register = on => {
     const blocks = ran.result as Array<{ text?: string }> | undefined
     const text = blocks?.[0]?.text ?? ''
     if (tool === 'task-start') {
-      try {
-        taskId = (JSON.parse(text) as { taskId?: string }).taskId ?? taskId
-      } catch {
-        // the start result was not JSON; keep the previous task id
-      }
-      let statusMessage = (JSON.parse(text) as { statusMessage?: string }).statusMessage ?? ''
+      // a start result that is not JSON keeps the previous task id
+      const started = parseObj(text)
+      taskId = str(started.taskId) ?? taskId
+      let statusMessage = str(started.statusMessage) ?? ''
       await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
       await update($, messages, list => [...list, { title: 'task-start', message: text }])
     }
     if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
-      let statusMessage = (JSON.parse(text) as { statusMessage?: string }).statusMessage ?? ''
+      let statusMessage = str(parseObj(text).statusMessage) ?? ''
       await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
       await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
     }
@@ -309,25 +349,119 @@ export const register: Register = on => {
   //   return next(e)
   // })
 
-  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
-    const { Box, Text, Markdown } = $.ui.resolve(e)
-    // The streamed text carries the plain prefix (for ctrl+o and exports);
-    // drawing swaps it for a coloured chip so the live view is not doubled.
-    const text = e.props.text
-    if (!text.startsWith(ANSWER_PREFIX)) return next(e)
-    const body = <Markdown text={'Hello2 ' + text.slice(ANSWER_PREFIX.length)} />
-    // The chip marks a turn that an extjs command-message started: only those
-    // draw it, every other prefixed message shows its content without the label.
-    if (hasCommandMessage && (isExtjsPrompt || isReExtPrompt)) {
-      return (
-        <Box flexDirection="column">
-          <Text color="yellow" bold>hello {ANSWER_PREFIX.trim()}</Text>
-          {body}
-        </Box>
-      )
-    }
-    return body
-  });
+  //        Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
+
+  // on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
+  //   const text = e.props.text
+  //   if (e.surface !== 'terminal') {
+  //     const { Box, Text, Svg } = $.ui.resolve(e)
+  //     return (
+  //       <Box>
+  //         <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={15} alt="Sencha Ext JS" />
+  //         <Box marginLeft={0.5}>
+  //           <Text color="yellow" weight="bold">Prompt: </Text>
+  //           <Text color="cyan" weight="regular">{text}</Text>
+  //         </Box>
+  //       </Box>
+  //     )
+  //   }
+  //   // terminal
+  //   const { Box, Text, Image } = $.ui.resolve(e)
+  //   return (
+  //     <Box>
+  //       <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
+  //     </Box>
+  //   )
+
+
+
+  //   // const { Box, Text, Image } = $.ui.resolve(e)
+  //   // const text = e.props.text
+  //   // const i = await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' });
+  //   // return Box({
+  //   //   flexDirection: 'row',
+  //   //   columnGap: 1,
+  //   //   children: [
+
+  //   //     //Image({ src:{{png: i.base64}}}),
+
+  //   //     Text({ color: 'cyan', children: ['⚡ Prompt:'] }),
+  //   //     Text({ color: 'green', children: [text] })
+  //   //   ]
+  //   // });
+  // });
+
+  //   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
+  //   //$.ui.log(`${e.component}: ${JSON.stringify(e.component, null, 2)}`)
+  //   const text = e.props.text
+  //   if (e.surface !== 'terminal') {
+  //     const { Box, Text, Svg } = $.ui.resolve(e)
+  //     return (
+  //       <Box flexDirection="row" alignItems="flex-start">
+  //         <Box marginTop={1}>
+  //           <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
+  //         </Box>
+  //         <Box marginLeft={0.5}>
+  //           <Text>
+  //             <Text color="yellow" weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
+  //             <Text color="cyan" weight="regular">{text}</Text>
+  //           </Text>
+  //         </Box>
+  //       </Box>
+  //     )
+  //   }
+  //   // terminal
+  //   const { Box, Text, Image } = $.ui.resolve(e)
+  //   return (
+  //     <Box>
+  //       <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
+  //     </Box>
+  //   )
+  // });
+
+  //   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
+  //   //$.ui.log(`${e.component}: ${JSON.stringify(e.component, null, 2)}`)
+  //   const text = e.props.text
+  //   if (e.surface !== 'terminal') {
+  //     const { Box, Text, Svg } = $.ui.resolve(e)
+  //     return (
+  //       <Box flexDirection="row" alignItems="flex-start">
+  //         <Box marginTop={0.5} flexShrink={0}>
+  //           <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
+  //         </Box>
+  //         <Box marginLeft={0.5}>
+  //           <Text>
+  //             <Text color="yellow" weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
+  //             <Text color="cyan" weight="regular">{text}</Text>
+  //           </Text>
+  //         </Box>
+  //       </Box>
+  //     )
+  //   }
+  //   // terminal
+  //   const { Box, Text, Image } = $.ui.resolve(e)
+  //   return (
+  //     <Box>
+  //       <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
+  //     </Box>
+  //   )
+  // });
+
+  on('ui.render', { component: 'UserMessage' }, async ($, e) => renderMessage($, e));
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e) => renderMessage($, e));
+
+  // on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+  //   const { Box, Text } = $.ui.resolve(e)
+  //   //const text = e.props.text
+  //   return Box({
+  //     flexDirection: 'row',
+  //     columnGap: 1,
+  //     children: [
+  //       Text({ color: 'cyan', children: ['⚡ Command Output:'] }),
+  //       Text({ color: 'green', children: ['text'] })
+  //     ]
+  //   });
+  // });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
@@ -345,8 +479,7 @@ export const register: Register = on => {
   });
 
   on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => {
-    if (e.requestId !== tool_use_id) return next(e)
-    await update($, messages, list => [...list, { title: 'ui.render:ToolProgress', message: JSON.stringify(e, null, spaces) }]);
+    //if (e.requestId !== tool_use_id) return next(e)
     const { Box, Text } = $.ui.resolve(e)
     return Box({
       flexDirection: 'row',
@@ -360,26 +493,25 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
-    if (e.requestId !== tool_use_id) return next(e)
-    await update($, messages, list => [...list, { title: 'ui.render:ToolUse', message: JSON.stringify(e, null, spaces) }]);
-    const { Box, Text } = $.ui.resolve(e)
-    return Box({
-      flexDirection: 'row',
-      columnGap: 1,
-      children: [
-        Text({ color: 'cyan', children: ['⚡ Custom Tool Use:'] }),
-        // Call next(e) to retain engine defaults, or return your own custom elements
-        await next(e),
-      ]
-    });
+    //if (e.requestId !== tool_use_id) return next(e)
+    const { Box, Text, Svg } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="row" alignItems="flex-start">
+        <Box marginTop={0.5} flexShrink={0}>
+          <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
+        </Box>
+        <Box marginLeft={0.5} flexDirection="row" alignItems="flex-start">
+          <Text color="cyan" weight="bold" italic={true}>Custom Tool Use:  </Text>
+          {/* Call next(e) to retain engine defaults, or return your own custom elements */}
+          {await next(e)}
+        </Box>
+      </Box>
+    )
   })
 
-
-  // on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
-  //   await update($, messages, list => [...list, { title: 'a', message: JSON.stringify(e, null, spaces) }]);
-  //   return next(e)
-  // })
-
+  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
+    return next(e)
+  })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)

@@ -554,7 +554,7 @@ export const register: Register = on => {
   let lastColumns: number | undefined
 
   on('session.start', async ($, e, next) => {
-    $.ui.log(`mjg session.start: At ${new Date().toLocaleString()}`)
+    $.ui.log(`session.start: At ${new Date().toLocaleString()}`)
     await $.command.register({
       name: 'skin',
       description: 'Open the skin settings, or /skin <name | list | off>',
