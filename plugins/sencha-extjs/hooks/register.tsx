@@ -4,15 +4,15 @@ import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
 export type Turn = { seconds: number; tools: number }
 
-const VERSION_STRING = 'v0.0.20'
+const VERSION_STRING = 'v0.0.21'
 
 const PANE = 'sencha-extjs'
 const PREFIX = 'mcp__extjs-tools__'
 const spaces = 2
 //const LOGO_SVG = 'assets/extjs-logo.svg'
-//const LOGO_PNG = 'assets/extjs-logo.png'
+const LOGO_PNG = 'assets/extjs-logo.png'
 const LOGO_SVG = 'assets/rapid.svg'
-const LOGO_PNG = 'assets/rapid.png'
+//const LOGO_PNG = 'assets/rapid.png'
 
 const labelFor = (component: string): string => {
   switch (component) {
@@ -44,12 +44,14 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
     )
   }
   // terminal
+  //$.ui.log(`$.plugin.root: ${$.plugin.root}/${LOGO_PNG}`)
   const { Box, Text, Image } = $.ui.resolve(e)
+  //const { base64 } = await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })
   return (
     <Box flexDirection="row" alignItems="flex-start">
-      <Box marginTop={0.5} flexShrink={0}>
-        <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
-      </Box>
+      {/* <Box marginTop={0.5} flexShrink={0}>
+        <Image source={{ png: base64 }} columns={10} rows={5} alt="Sencha Ext JS" />
+      </Box> */}
       <Box marginLeft={0.5}>
         <Text>
           <Text color="cyan" weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
