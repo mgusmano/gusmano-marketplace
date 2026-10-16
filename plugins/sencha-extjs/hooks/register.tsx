@@ -104,19 +104,21 @@ export function subjectOf(e: ToolCallInput): string | undefined {
 
 const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) => {
   //const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: { text?: string; word?: string; hint?: string; } }) => {
-  if (e.component === 'zzzToolUse') {
+  if (e.component === 'zzzTurnDuration') {
     $.ui.log(`renderMessage: ${JSON.stringify(e, null, 2)}`)
   }
   switch (e.component) {
     case 'ToolResult': return { label: 'Tool Result', text: `${e.props.tool}\n${e.props.output}`, showNext: false, marginTop: 0 }
     case 'AbovePrompt': return { label: 'Above', text: e.props.bodyColumns, showNext: true, marginTop: 0 }
-    case 'PromptHint': return { label: 'PromptHint', text: e.props.hint, showNext: true, marginTop: 0 }
+    case 'PromptHint': return { label: 'Hint', text: e.props.hint, showNext: true, marginTop: 0 }
     case 'UserMessage': return { label: 'Prompt', text: e.props.text, showNext: false, marginTop: 0 }
     case 'ToolUse': return { label: 'Tool Use', text: e.props.text, showNext: true, marginTop: 0.155 }
     case 'ToolGroup': return { label: 'Tool Group', text: e.props.text, showNext: true, marginTop: 0 }
     case 'AssistantMessage': return { label: 'Message', text: e.props.text, showNext: true, marginTop: 0 }
+    case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: true, marginTop: 0 }
     case 'Spinner': return { label: 'Spinner', text: e.props.word, showNext: true, marginTop: 0 }
     case 'SessionMode': return { label: 'Session Mode', text: '', showNext: true, marginTop: 0 }
+   case 'TurnDuration': return { label: 'Time', text: e.props.durationMs + 'ms', showNext: true, marginTop: 0 }
     default: return { label: e.component, text: e.props.text, showNext: true, marginTop: 0 }
   }
 }
@@ -158,7 +160,7 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
       {/* <Box marginTop={0.5} flexShrink={0}>
         <Image source={{ png: base64 }} columns={10} rows={5} alt="Sencha Ext JS" />
       </Box> */}
-      <Box marginLeft={0.5}>
+      <Box marginLeft={0.5} width={8} flexShrink={0}>
         <Text>
           <Text color="cyan" weight="bold" italic={true}>{label}:  </Text>
         </Text>
