@@ -203,7 +203,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next));
+  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next));
 
