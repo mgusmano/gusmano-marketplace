@@ -21,6 +21,11 @@
       "description": "A side pane that opens with the Sencha Ext JS icon at its top."
     },
     {
+      "name": "sencha",
+      "source": "./plugins/sencha",
+      "description": "A side pane that opens with the Sencha icon at its top."
+    },
+    {
       "name": "mjg-test",
       "source": "./plugins/mjg-test",
       "description": "mjg-test description"

@@ -1,0 +1,32 @@
+{
+  "name": "sencha",
+  "version": "0.0.1",
+  "description": "Sencha Claude Code Mod",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Marc Gusmano",
+    "email": "mgusmano@yahoo.com"
+  },
+  "skills": [
+    "./"
+  ],
+  "mcpServers": {
+    "extjs-tools": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/ExtJSToolsMCPServer.mjs"
+      ],
+      "env": {}
+    },
+    "extjs-example": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/ExtJSExampleMCPServer.mjs"
+      ],
+      "env": {}
+    }
+  },
+  "lspServers": "./.lsp.json"
+}

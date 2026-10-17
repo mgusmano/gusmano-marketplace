@@ -1,0 +1,17 @@
+{
+  "extjs": {
+    "command": "node",
+    "args": [
+      "${CLAUDE_PLUGIN_ROOT}/dist/main.js",
+      "--stdio"
+    ],
+    "extensionToLanguage": {
+      ".js": "javascript"
+    },
+    "initializationOptions": {
+      "extjstest": {
+        "sdkPath": "/Users/marcgusmano/gusmano-marketplace/plugins/sencha/sdk/ext"
+      }
+    }
+  }
+}
