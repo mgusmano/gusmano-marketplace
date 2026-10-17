@@ -33,7 +33,9 @@ const parseObj = (text: string): Record<string, unknown> => {
   }
 }
 
-const status = atom({ plugin: 'sencha', key: 'status' } as const, [] as Message[])
+const history = atom({ plugin: 'sencha', key: 'history' } as const, [] as Message[])
+// history is append-only, so only entries past the count already shown are added
+const historySeen = new Map<string, number>()
 const run = atom({ plugin: 'sencha', key: 'run' } as const, {})
 const steps = atom({ plugin: 'sencha', key: 'steps' } as const, [])
 const messages = atom({ plugin: 'sencha', key: 'messages' } as const, [] as Message[])
@@ -383,20 +385,23 @@ export const register: Register = on => {
     //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
     const id = e.tool_use_id
-    const tool = e.tool.startsWith(PREFIX) ? e.tool.slice(PREFIX.length) : e.tool
+    const tool = e.tool.startsWith(PREFIX) ? e.tool.slice(PREFIX.length) : e.tool.includes('__') ? e.tool.slice(e.tool.lastIndexOf('__') + 2) : e.tool
     const subject = subjectOf(e)
     await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
     const ran: any = await next(e)
-    //await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
-    //let status: any = JSON.stringify(ran.result[0]?.text)
-    let statusText: any = ran.result[0]?.text
-    //$.ui.log(`status: ${statusText}`)
-    let statusJson = JSON.parse(statusText)
-    //$.ui.log(`status.taskId: ${statusJson.taskId}`)
-    //$.ui.log(`status.taskId: ${statusJson.statusMessage}`)
-    //await update($, messages, list => [...list, { title: 'tool.call:ran[0]', message: statusJson.statusMessage }]);
-
-    await update($, status, list => [...list, { title: 'task-start', message: statusJson.statusMessage }])
+    await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
+    //if (tool === 'task-start' || tool === 'task-get') {
+      const blocks = Array.isArray(ran?.result) ? ran.result : ran?.result?.content
+      const task = parseObj(typeof blocks?.[0]?.text === 'string' ? blocks[0].text : '')
+      taskId = str(task.taskId) ?? taskId
+      const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
+      const seen = taskId !== undefined ? historySeen.get(taskId) ?? 0 : 0
+      //const fresh = entries.slice(seen).map(entry => ({ title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
+     const fresh = entries.slice(seen).map(entry => ({ title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
+      if (taskId !== undefined) historySeen.set(taskId, entries.length)
+      if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
+      else await update($, messages, list => [...list, { title: `history:${tool}`, message: `taskId: ${taskId ?? 'none'} · entries: ${entries.length} · shown: ${seen}` }])
+    //}
 
     //await update($, messages, list => [...list, { title: 'tool', message: `tool: ${tool}` }]);
 
@@ -483,7 +488,7 @@ export const register: Register = on => {
     const r: UpgradeRun = await read($, run)
     const list: UpgradeStep[] = await read($, steps)
     const feed: Message[] = await read($, messages)
-    const statuses: Message[] = await read($, status)
+    const historyEntries: Message[] = await read($, history)
     const facts: { k: string; v: string; color?: string }[] = []
     if (r.projectType) {
       facts.push({
@@ -519,7 +524,7 @@ export const register: Register = on => {
             await update($, run, () => ({}))
             await update($, steps, () => [])
             await update($, messages, () => [])
-            await update($, status, () => [])
+            await update($, history, () => [])
           }}></Button>
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
@@ -538,12 +543,12 @@ export const register: Register = on => {
           ))
         }
 
-        <Box marginTop={2}><Text color="yellow" italic>STATUS</Text></Box>
+        <Box marginTop={2}><Text color="yellow" italic>HISTORY</Text></Box>
         {
-          statuses.length === 0 ? (
-            <Text dimColor>No status yet.</Text>
+          historyEntries.length === 0 ? (
+            <Text dimColor>No history yet.</Text>
           ) : (
-            statuses.map((s, i) => (
+            historyEntries.map((s, i) => (
               <Text key={`step${i}`}>
                 <Text color="cyan">{s.title}</Text>
                 <Text dimColor> {s.message}</Text>
@@ -595,7 +600,7 @@ export const register: Register = on => {
             await update($, run, () => ({}))
             await update($, steps, () => [])
             await update($, messages, () => [])
-            await update($, status, () => [])
+            await update($, history, () => [])
           }}></Button>
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>

@@ -26,7 +26,7 @@ export type Message = {
 declare module 'claude-code' {
   interface PluginState {
     'sencha': { 
-      status: Message[]; 
+      history: Message[]; 
       run: UpgradeRun; 
       steps: UpgradeStep[]; 
       messages: Message[] 
