@@ -11,9 +11,9 @@ let lastPlacement = ''
 const PREFIX = 'mcp__extjs-tools__'
 const spaces = 2
 //const LOGO_SVG = 'assets/extjs-logo.svg'
-const LOGO_PNG = 'assets/extjs-logo.png'
+//const LOGO_PNG = 'assets/extjs-logo.png'
 const LOGO_SVG = 'assets/rapid.svg'
-//const LOGO_PNG = 'assets/rapid.png'
+const LOGO_PNG = 'assets/rapid.png'
 
 const tail = (p: string, max = 46) => (p.length > max ? '…' + p.slice(-(max - 1)) : p)
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
@@ -119,6 +119,7 @@ const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: true, marginTop: 0 }
     case 'Spinner': return { label: 'Spinner', text: e.props.word, showNext: true, marginTop: 0 }
     case 'SessionMode': return { label: 'Session Mode', text: '', showNext: true, marginTop: 0 }
+    case 'InfoNotice': return { label: 'Notice', text: e.props.text, showNext: true, marginTop: 0 }
     case 'TurnDuration': return { label: 'Time', text: e.props.durationMs + 'ms', showNext: true, marginTop: 0 }
     default: return { label: e.component, text: e.props.text, showNext: true, marginTop: 0 }
   }
@@ -154,13 +155,21 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
   }
   // terminal
   //$.ui.log(`$.plugin.root: ${$.plugin.root}/${LOGO_PNG}`)
-  const { Box, Text, Image } = $.ui.resolve(e)
+  const { Box, Text } = $.ui.resolve(e)
   //const { base64 } = await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })
   //$.ui.log(`here`);
+
+    let img
+    if (e.surface === 'terminal') {
+      const { Image } = $.ui.resolve(e)
+       img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha Ext JS" /></Box>
+    }
+
+
   return (
     <Box flexDirection="row" alignItems="flex-start" >
-      <Box marginTop={1} width={10} flexShrink={0} >
-        <Text color="cyan" weight="bold" italic={true}>{label}: </Text>
+      <Box marginTop={1} width={12} flexShrink={0} >
+       {img} <Text color="cyan" weight="bold" italic={true}>{label}: </Text>
       </Box>
       {!showNext && <Box marginTop={1}><Text color="rgb(145,186,76)" weight="regular">{text}</Text></Box>}
       {showNext && beneath}
@@ -183,7 +192,7 @@ export const register: Register = on => {
   //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next));
+  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next));
@@ -199,14 +208,16 @@ export const register: Register = on => {
     let img
     if (e.surface === 'terminal') {
       const { Image } = $.ui.resolve(e)
-      img = <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha" />
+       img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha Ext JS" /></Box>
     }
 
     const beneath = await next(e)
     return (
       <Box flexDirection="column" marginTop={1}>
-        {img}
+
         <Box flexDirection="row">
+          {img}
+
           <Text color="cyan" italic>Sencha Ext JS</Text>
           <Text dimColor> · </Text>
           <Text color="yellow" italic>Classic toolkit · Classic theme</Text>
@@ -599,7 +610,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column">
         <Box flexDirection="row">
-          <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha Ext JS" />
+          <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha Ext JS" /></Box>
           <Box marginLeft={2}>{version}</Box>
           <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
         </Box>
