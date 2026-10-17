@@ -141,7 +141,7 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
         <Box marginTop={0.5} flexShrink={0}>
           <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
         </Box>
-        <Box marginLeft={0.5} borderStyle="round" borderColor="cyan">
+        <Box marginLeft={0.5}>
           <Box flexDirection="row">
             <Box width={8} flexShrink={0}>
               <Text color="cyan" weight="bold" italic={true}>{label}:</Text>
