@@ -16,7 +16,7 @@ const versionString = async ($: EngineInterface): Promise<string> => {
 const PANE = 'sencha'
 //let lastPlacement = ''
 const PREFIX = 'mcp__extjs-tools__'
-const spaces = 2
+const spaces = 0
 const LOGO_SVG = 'assets/rapid.svg'
 const LOGO_PNG = 'assets/rapid.png'
 
@@ -41,6 +41,31 @@ const steps = atom({ plugin: 'sencha', key: 'steps' } as const, [])
 const messages = atom({ plugin: 'sencha', key: 'messages' } as const, [] as Message[])
 //const last = atom({ plugin: 'turn-band', key: 'last' } as const, null)
 //const isHidden = atom({ plugin: 'turn-band', key: 'isHidden' } as const, false)
+
+// task-start puts the task JSON in block 0; task-get prepends a transcript
+// string and leaves the JSON in a later block, so scan for the one that is a task
+const taskOf = (res: any): Record<string, unknown> => {
+  const blocks = Array.isArray(res?.result) ? res.result : res?.result?.content
+  if (!Array.isArray(blocks)) return {}
+  for (const block of blocks) {
+    if (typeof block?.text !== 'string') continue
+    const parsed = parseObj(block.text)
+    if (typeof parsed.taskId === 'string' || Array.isArray(parsed.history)) return parsed
+  }
+  return {}
+}
+
+// append only the history entries not shown yet, oldest first
+const appendHistory = async ($: EngineInterface, task: Record<string, unknown>): Promise<number> => {
+  const id = str(task.taskId)
+  if (id === undefined) return 0
+  const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
+  const seen = historySeen.get(id) ?? 0
+  const fresh = entries.slice(seen).map(entry => ({ title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
+  historySeen.set(id, entries.length)
+  if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
+  return fresh.length
+}
 
 // The extjs-tools results are a prose line followed by one or more JSON
 // objects, so take the last object that parses rather than the first brace.
@@ -192,6 +217,9 @@ export const register: Register = on => {
   let isExtjsPrompt = false
   let isReExtPrompt = false
   let taskId: string | undefined
+  // tasks the pane polls itself, and a guard so those polls skip the bookkeeping below
+  const polling = new Set<string>()
+  let internalToolCall = false
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next));
@@ -379,29 +407,71 @@ export const register: Register = on => {
   })
 
   on('tool.call', async ($, e, next) => {
+    if (internalToolCall) return next(e)
     tool_use_id = e.tool_use_id;
     await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
     const id = e.tool_use_id
-    const tool = e.tool.startsWith(PREFIX) ? e.tool.slice(PREFIX.length) : e.tool.includes('__') ? e.tool.slice(e.tool.lastIndexOf('__') + 2) : e.tool
+    const tool = e.tool.slice(e.tool.lastIndexOf('_') + 1)
+
+    $.ui.log(`tool: ${tool}`)
+
+    // example: pin a note to this tool call's row (undefined clears it)
+    $.ui.notice(id, `${tool} running`)
+
+
+
+    
     const subject = subjectOf(e)
     await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
     const ran: any = await next(e)
+    $.ui.notice(id, undefined)
     await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
-    //if (tool === 'task-start' || tool === 'task-get') {
-      const blocks = Array.isArray(ran?.result) ? ran.result : ran?.result?.content
-      const task = parseObj(typeof blocks?.[0]?.text === 'string' ? blocks[0].text : '')
+    if (tool === 'task-start' || tool === 'task-get') {
+      const task = taskOf(ran)
       taskId = str(task.taskId) ?? taskId
-      const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
-      const seen = taskId !== undefined ? historySeen.get(taskId) ?? 0 : 0
-      //const fresh = entries.slice(seen).map(entry => ({ title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
-     const fresh = entries.slice(seen).map(entry => ({ title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
-      if (taskId !== undefined) historySeen.set(taskId, entries.length)
-      if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
-      else await update($, messages, list => [...list, { title: `history:${tool}`, message: `taskId: ${taskId ?? 'none'} · entries: ${entries.length} · shown: ${seen}` }])
-    //}
+      $.ui.log(`taskId: ${taskId}`)
+
+      //if (taskId !== undefined && !polling.has(taskId)) {
+      if (taskId !== undefined) {
+        $.ui.log(`append: ${taskId}`)
+        const added = await appendHistory($, task)
+        if (added === 0) await update($, messages, list => [...list, { title: `history:${tool}`, message: `taskId: ${taskId} · entries: ${(task.history as unknown[] | undefined)?.length ?? 0}` }])
+      }
+      else {
+        $.ui.log(`NO append: ${taskId}`)
+      }
+      // the model may not poll, so the pane polls the task itself until it ends
+      if (tool === 'task-start' && taskId !== undefined && !polling.has(taskId)) {
+        const name = e.tool.replace(/task-start$/, 'task-get')
+        const pollId = taskId
+        polling.add(pollId)
+        const step = async (tries: number): Promise<void> => {
+          if (tries <= 0 || !polling.has(pollId)) {
+            polling.delete(pollId)
+            return
+          }
+          internalToolCall = true
+          let res: any
+          try {
+            res = await $.tool.call({ tool: name, taskId: pollId } as any)
+          } finally {
+            internalToolCall = false
+          }
+          const t = taskOf(res)
+          const state = str(t.status)
+          await appendHistory($, t)
+          if (state === 'completed' || state === 'failed' || state === 'cancelled') {
+            polling.delete(pollId)
+            return
+          }
+          $.clock.after(2000, () => { void step(tries - 1) })
+        }
+        $.clock.after(2000, () => { void step(300) })
+      }
+    }
 
     //await update($, messages, list => [...list, { title: 'tool', message: `tool: ${tool}` }]);
 
