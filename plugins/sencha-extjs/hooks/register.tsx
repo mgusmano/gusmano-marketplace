@@ -1,4 +1,4 @@
-import type { Hook, Register, RenderInput, ToolCallInput } from 'claude-code'
+import type { Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
@@ -7,6 +7,7 @@ export type Turn = { seconds: number; tools: number }
 const VERSION_STRING = 'v0.0.24'
 
 const PANE = 'sencha-extjs'
+let lastPlacement = ''
 const PREFIX = 'mcp__extjs-tools__'
 const spaces = 2
 //const LOGO_SVG = 'assets/extjs-logo.svg'
@@ -110,15 +111,15 @@ const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
   switch (e.component) {
     case 'ToolResult': return { label: 'Tool Result', text: `${e.props.tool}\n${e.props.output}`, showNext: false, marginTop: 0 }
     case 'AbovePrompt': return { label: 'Above', text: e.props.bodyColumns, showNext: true, marginTop: 0 }
-    case 'PromptHint': return { label: 'Hint', text: e.props.hint, showNext: true, marginTop: 0 }
-    case 'UserMessage': return { label: 'Prompt', text: e.props.text, showNext: false, marginTop: 0 }
+    case 'PromptHint': return { label: 'Hint', text: e.props.hint, showNext: false, marginTop: 0 }
+    case 'UserMessage': return { label: 'Prompt', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
     case 'ToolUse': return { label: 'Tool Use', text: e.props.text, showNext: true, marginTop: 0.155 }
     case 'ToolGroup': return { label: 'Tool Group', text: e.props.text, showNext: true, marginTop: 0 }
-    case 'AssistantMessage': return { label: 'Message', text: e.props.text, showNext: true, marginTop: 0 }
+    case 'AssistantMessage': return { label: 'Message', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
     case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: true, marginTop: 0 }
     case 'Spinner': return { label: 'Spinner', text: e.props.word, showNext: true, marginTop: 0 }
     case 'SessionMode': return { label: 'Session Mode', text: '', showNext: true, marginTop: 0 }
-   case 'TurnDuration': return { label: 'Time', text: e.props.durationMs + 'ms', showNext: true, marginTop: 0 }
+    case 'TurnDuration': return { label: 'Time', text: e.props.durationMs + 'ms', showNext: true, marginTop: 0 }
     default: return { label: e.component, text: e.props.text, showNext: true, marginTop: 0 }
   }
 }
@@ -127,7 +128,7 @@ const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
 //const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput<any>, next: Parameters<Hook<'ui.render'>>[2]) => {
 const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput<any>, next: any) => {
   const { label, text, showNext, marginTop } = dataFor($, e)
-  //$.ui.log(`renderMessage: ${e.component} ${label} ${text}`)
+  //$.ui.log(`renderMessage: ${e.component} ${label} ${text} ${showNext}`)
   const beneath = await next(e)
   //return beneath
   //<Text color="rgb(25,63,88)" backgroundColor="rgb(5,6,5)"  weight="bold" italic={true}>{labelFor(e.component)}:  </Text>
@@ -139,7 +140,7 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
         <Box marginTop={0.5} flexShrink={0}>
           <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
         </Box>
-        <Box marginLeft={0.5}>
+        <Box marginLeft={0.5} borderStyle="round" borderColor="cyan">
           <Box flexDirection="row">
             <Box width={8} flexShrink={0}>
               <Text color="cyan" weight="bold" italic={true}>{label}:</Text>
@@ -155,31 +156,16 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
   //$.ui.log(`$.plugin.root: ${$.plugin.root}/${LOGO_PNG}`)
   const { Box, Text, Image } = $.ui.resolve(e)
   //const { base64 } = await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })
+  //$.ui.log(`here`);
   return (
-    <Box flexDirection="row" alignItems="flex-start">
-      {/* <Box marginTop={0.5} flexShrink={0}>
-        <Image source={{ png: base64 }} columns={10} rows={5} alt="Sencha Ext JS" />
-      </Box> */}
-      <Box marginLeft={0.5} width={8} flexShrink={0}>
-        <Text>
-          <Text color="cyan" weight="bold" italic={true}>{label}:  </Text>
-        </Text>
+    <Box flexDirection="row" alignItems="flex-start" >
+      <Box marginTop={1} width={10} flexShrink={0} >
+        <Text color="cyan" weight="bold" italic={true}>{label}: </Text>
       </Box>
-      <Box marginLeft={0.5}>
-        <Text>
-          <Text color="rgb(145,186,76)" weight="regular">{text}</Text>
-        </Text>
-      </Box>
+      {!showNext && <Box marginTop={1}><Text color="rgb(145,186,76)" weight="regular">{text}</Text></Box>}
+      {showNext && beneath}
     </Box>
   )
-    //   return Box({
-  //     flexDirection: 'row',
-  //     columnGap: 1,
-  //     children: [
-  //       Text({ color: 'cyan', children: ['⚡ Command Output:'] }),
-  //       Text({ color: 'green', children: ['text'] })
-  //     ]
-  //   });
 }
 
 export const register: Register = on => {
@@ -200,7 +186,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next));
+  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next));
@@ -209,9 +195,17 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
+
+    let img
+    if (e.surface === 'terminal') {
+      const { Image } = $.ui.resolve(e)
+      img = <Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={10} rows={1} alt="Sencha" />
+    }
+
     const beneath = await next(e)
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" marginTop={1}>
+        {img}
         <Box flexDirection="row">
           <Text color="cyan" italic>Sencha Ext JS</Text>
           <Text dimColor> · </Text>
@@ -239,11 +233,29 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     //$.ui.log(`session.start: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
     await $.command.register({ name: 'extjs', description: 'Open the Sencha Ext JS side pane' })
-    $.clock.after(500, () => {
-      //void update($, messages, list => [...list, { title: 'session.start:timer', message: '500ms elapsed' }])
-      // No surface attached yet (or headless run): skip the pane instead of an unhandled rejection
-      $.ui.open({ id: PANE, title: 'Sencha Ext JS' }).catch(() => undefined)
-    })
+
+    const MAX_OPEN_TRIES = 10
+    const openWhenSurface = async (tries = 1): Promise<void> => {
+      if ((await $.session.surfaces()).length === 0) {
+        if (tries >= MAX_OPEN_TRIES) {
+          $.ui.log(`session.start: no surface after ${MAX_OPEN_TRIES} tries, pane not opened`)
+          return
+        }
+        $.clock.after(500, () => { void openWhenSurface(tries + 1) })
+        return
+      }
+      const paneOpenArgs: PaneOpenArgs = {
+        id: PANE,
+        title: 'Sencha',
+        //rows: 600,
+        columns: 100
+      }
+      await $.ui.open(paneOpenArgs).catch((error) => {
+        $.ui.log(`session.start.ERROR: ${error.toString()}`)
+      })
+    }
+    $.clock.after(500, () => { void openWhenSurface() })
+
     await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${VERSION_STRING}, time: ${new Date().toLocaleString()}` }]);
     return next(e)
   })
@@ -273,8 +285,13 @@ export const register: Register = on => {
 
   on('command.run', { command: 'extjs' }, async $ => {
     await update($, messages, list => [...list, { title: 'command.run', message: `command 'extjs' executed.` }]);
+    // No surface attached (bare -p run): ui.open may never settle, so check first
+    if ((await $.session.surfaces()).length === 0) {
+      return { text: 'Sencha Ext JS pane could not open: no surface is attached' }
+    }
     try {
-      await $.ui.open({ id: PANE, title: 'Sencha Ext JS' })
+      const opened = await $.ui.open({ id: PANE, title: 'Sencha Ext JS' })
+      if (!opened.isPlaced) return { text: `Sencha Ext JS pane waiting: ${opened.reason}` }
     } catch {
       return { text: 'Sencha Ext JS pane could not open: no surface is attached' }
     }
@@ -431,6 +448,12 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
+    // // Log placement only when it changes, not on every render
+    // const placement = (e.props as { placement?: string }).placement ?? 'unknown'
+    // //if (placement !== lastPlacement) {
+    //   lastPlacement = placement
+    //   $.ui.log(`ui.render Pane placement: ${placement}, bodyColumns: ${(e.props as { bodyColumns?: number }).bodyColumns ?? 'n/a'}`)
+    // //}
     const r: UpgradeRun = await read($, run)
     const list: UpgradeStep[] = await read($, steps)
     const feed: Message[] = await read($, messages)
@@ -561,7 +584,7 @@ export const register: Register = on => {
           <Box flexDirection="row">
             <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha Ext JS" />
             <Box marginLeft={2}><Text color="yellow" italic>Sencha Ext JS</Text></Box>
-           <Box marginLeft={2}>{version}</Box>
+            <Box marginLeft={2}>{version}</Box>
             <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
           </Box>
           {buttons}
