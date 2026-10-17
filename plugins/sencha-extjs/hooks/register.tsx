@@ -4,7 +4,7 @@ import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
 export type Turn = { seconds: number; tools: number }
 
-const VERSION_STRING = 'v0.0.23'
+const VERSION_STRING = 'v0.0.24'
 
 const PANE = 'sencha-extjs'
 const PREFIX = 'mcp__extjs-tools__'
