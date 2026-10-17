@@ -1,10 +1,17 @@
-import type { Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
+import type { EngineInterface, Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
 export type Turn = { seconds: number; tools: number }
 
-const VERSION_STRING = 'v0.0.24'
+const versionString = async ($: EngineInterface): Promise<string> => {
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as { version?: unknown }
+    return typeof manifest.version === 'string' ? `v${manifest.version}` : 'v?'
+  } catch {
+    return 'v?'
+  }
+}
 
 const PANE = 'sencha-extjs'
 let lastPlacement = ''
@@ -242,7 +249,7 @@ export const register: Register = on => {
   // })
 
   on('session.start', async ($, e, next) => {
-    //$.ui.log(`session.start: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
+    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`)
     await $.command.register({ name: 'extjs', description: 'Open the Sencha Ext JS side pane' })
 
     const MAX_OPEN_TRIES = 10
@@ -267,12 +274,13 @@ export const register: Register = on => {
     }
     $.clock.after(500, () => { void openWhenSurface() })
 
-    await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${VERSION_STRING}, time: ${new Date().toLocaleString()}` }]);
+    const version = await versionString($)
+    await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${version}, time: ${new Date().toLocaleString()}` }]);
     return next(e)
   })
 
   on('ui.open', async ($, e, next) => {
-    $.ui.log(`ui.open: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
+    $.ui.log(`ui.open: ${await versionString($)} At ${new Date().toLocaleString()}`)
     return next(e)
   })
 
@@ -494,7 +502,7 @@ export const register: Register = on => {
     })
 
     let version =
-      <Text color="cyan" italic>{VERSION_STRING}</Text>
+      <Text color="cyan" italic>{await versionString($)}</Text>
 
     let buttons =
       <Box flexDirection="row" marginTop={1}>

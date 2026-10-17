@@ -9,7 +9,7 @@
 claude plugin marketplace add mgusmano/gusmano-marketplace
 
 # install the plugin
-claude plugin install sencha-extjs@gusmano-marketplace
+claude plugin uninstall sencha-extjs@gusmano-marketplace
 
 # update the plugin
 claude plugin update sencha-extjs@gusmano-marketplace

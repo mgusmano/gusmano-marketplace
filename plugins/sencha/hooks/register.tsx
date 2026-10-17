@@ -1,17 +1,22 @@
-import type { Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
+import type { EngineInterface, Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
 
 export type Turn = { seconds: number; tools: number }
 
-const VERSION_STRING = 'v0.0.24'
+const versionString = async ($: EngineInterface): Promise<string> => {
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as { version?: unknown }
+    return typeof manifest.version === 'string' ? `v${manifest.version}` : 'v?'
+  } catch {
+    return 'v?'
+  }
+}
 
 const PANE = 'sencha'
-let lastPlacement = ''
+//let lastPlacement = ''
 const PREFIX = 'mcp__extjs-tools__'
 const spaces = 2
-//const LOGO_SVG = 'assets/extjs-logo.svg'
-//const LOGO_PNG = 'assets/extjs-logo.png'
 const LOGO_SVG = 'assets/rapid.svg'
 const LOGO_PNG = 'assets/rapid.png'
 
@@ -105,7 +110,7 @@ export function subjectOf(e: ToolCallInput): string | undefined {
 
 const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) => {
   //const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: { text?: string; word?: string; hint?: string; } }) => {
-  if (e.component === 'zzzTurnDuration') {
+  if (e.component === 'zzzToolUse') {
     $.ui.log(`renderMessage: ${JSON.stringify(e, null, 2)}`)
   }
   switch (e.component) {
@@ -113,7 +118,7 @@ const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     case 'AbovePrompt': return { label: 'Above', text: e.props.bodyColumns, showNext: true, marginTop: 0 }
     case 'PromptHint': return { label: 'Hint', text: e.props.hint, showNext: false, marginTop: 0 }
     case 'UserMessage': return { label: 'Prompt', text: e.props.text?.trimEnd(), showNext: false, marginTop: 0 }
-    case 'ToolUse': return { label: 'Tool Use', text: e.props.text, showNext: true, marginTop: 0.155 }
+    case 'ToolUse': return { label: 'Tool Use', text: e.props.output, showNext: false, marginTop: 0 }
     case 'ToolGroup': return { label: 'Tool Group', text: e.props.text, showNext: true, marginTop: 0 }
     case 'AssistantMessage': return { label: 'Message', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
     case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: true, marginTop: 0 }
@@ -143,7 +148,7 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
         </Box>
         <Box marginLeft={0.5}>
           <Box flexDirection="row">
-            <Box width={8} flexShrink={0}>
+            <Box width={8} flexShrink={0} marginTop={0.04}>
               <Text color="cyan" weight="bold" italic={true}>{label}:</Text>
             </Box>
             {!showNext && <Text color="rgb(145,186,76)" weight="regular">{text}</Text>}
@@ -159,17 +164,17 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
   //const { base64 } = await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })
   //$.ui.log(`here`);
 
-    let img
-    if (e.surface === 'terminal') {
-      const { Image } = $.ui.resolve(e)
-       img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="S" /></Box>
-    }
+  let img
+  if (e.surface === 'terminal') {
+    const { Image } = $.ui.resolve(e)
+    img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="S" /></Box>
+  }
 
 
   return (
     <Box flexDirection="row" alignItems="flex-start" >
       <Box marginTop={1} width={12} flexShrink={0} >
-       {img} <Text color="cyan" weight="bold" italic={true}>{label}: </Text>
+        {img} <Text color="cyan" weight="bold" italic={true}>{label}: </Text>
       </Box>
       {!showNext && <Box marginTop={1}><Text color="rgb(145,186,76)" weight="regular">{text}</Text></Box>}
       {showNext && beneath}
@@ -199,7 +204,7 @@ export const register: Register = on => {
   //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next));
   //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next));
+  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next));
   on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next));
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -208,7 +213,7 @@ export const register: Register = on => {
     let img
     if (e.surface === 'terminal') {
       const { Image } = $.ui.resolve(e)
-       img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
+      img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
     }
 
     const beneath = await next(e)
@@ -242,7 +247,7 @@ export const register: Register = on => {
   // })
 
   on('session.start', async ($, e, next) => {
-    //$.ui.log(`session.start: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
+    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`)
     await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
 
     const MAX_OPEN_TRIES = 10
@@ -267,14 +272,15 @@ export const register: Register = on => {
     }
     $.clock.after(500, () => { void openWhenSurface() })
 
-    await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${VERSION_STRING}, time: ${new Date().toLocaleString()}` }]);
+    const version = await versionString($)
+    await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${version}, time: ${new Date().toLocaleString()}` }]);
     return next(e)
   })
 
-  on('ui.open', async ($, e, next) => {
-    $.ui.log(`ui.open: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
-    return next(e)
-  })
+  // on('ui.open', async ($, e, next) => {
+  //   $.ui.log(`ui.open: ${await versionString($)} At ${new Date().toLocaleString()}`)
+  //   return next(e)
+  // })
 
   on('session.end', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'session.end', message: JSON.stringify(e, null, spaces) }]);
@@ -353,8 +359,8 @@ export const register: Register = on => {
   })
 
   on('turn.step', async function* ($, e, next) {
-    //await update($, messages, list => [...list, { title: 'turn.step', message: JSON.stringify(e, null, spaces) }]);
     await update($, messages, list => [...list, { title: 'turn.step: ', message: `index: ${e.index}, messageCount: ${e.messageCount}` }]);
+    await update($, messages, list => [...list, { title: 'turn.step', message: JSON.stringify(e, null, spaces) }]);
     for await (const c of next(e)) yield c
   })
 
@@ -372,41 +378,50 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     tool_use_id = e.tool_use_id;
-
-    //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
+    //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
     const id = e.tool_use_id
     const tool = e.tool.startsWith(PREFIX) ? e.tool.slice(PREFIX.length) : e.tool
     const subject = subjectOf(e)
     await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
-    const ran = await next(e)
+    const ran: any = await next(e)
     //await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
+    //let status: any = JSON.stringify(ran.result[0]?.text)
+    let statusText: any = ran.result[0]?.text
+    //$.ui.log(`status: ${statusText}`)
+    let statusJson = JSON.parse(statusText)
+    //$.ui.log(`status.taskId: ${statusJson.taskId}`)
+    //$.ui.log(`status.taskId: ${statusJson.statusMessage}`)
+    //await update($, messages, list => [...list, { title: 'tool.call:ran[0]', message: statusJson.statusMessage }]);
+
+    await update($, status, list => [...list, { title: 'task-start', message: statusJson.statusMessage }])
+
     //await update($, messages, list => [...list, { title: 'tool', message: `tool: ${tool}` }]);
 
-    if (tool === 'job-status') {
-      const result = ran.result as Array<{ text?: string }> | undefined
-      const statusJson = parseObj(result?.[0]?.text ?? '') as { state?: string; percent?: number; message?: string }
-      //await update($, messages, list => [...list, { title: 'status', message: JSON.stringify(result?.[0]?.text, null, spaces) }]);
-      await update($, messages, list => [...list, { title: 'status', message: `${statusJson.state}: ${statusJson.percent}% - ${statusJson.message}` }]);
-    }
+    // if (tool === 'job-status') {
+    //   const result = ran.result as Array<{ text?: string }> | undefined
+    //   const statusJson = parseObj(result?.[0]?.text ?? '') as { state?: string; percent?: number; message?: string }
+    //   //await update($, messages, list => [...list, { title: 'status', message: JSON.stringify(result?.[0]?.text, null, spaces) }]);
+    //   await update($, messages, list => [...list, { title: 'status', message: `${statusJson.state}: ${statusJson.percent}% - ${statusJson.message}` }]);
+    // }
 
-    const blocks = ran.result as Array<{ text?: string }> | undefined
-    const text = blocks?.[0]?.text ?? ''
-    if (tool === 'task-start') {
-      // a start result that is not JSON keeps the previous task id
-      const started = parseObj(text)
-      taskId = str(started.taskId) ?? taskId
-      let statusMessage = str(started.statusMessage) ?? ''
-      await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
-      await update($, messages, list => [...list, { title: 'task-start', message: text }])
-    }
-    if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
-      let statusMessage = str(parseObj(text).statusMessage) ?? ''
-      await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
-      await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
-    }
+    // const blocks = ran.result as Array<{ text?: string }> | undefined
+    // const text = blocks?.[0]?.text ?? ''
+    // if (tool === 'task-start') {
+    //   // a start result that is not JSON keeps the previous task id
+    //   const started = parseObj(text)
+    //   taskId = str(started.taskId) ?? taskId
+    //   let statusMessage = str(started.statusMessage) ?? ''
+    //   await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
+    //   await update($, messages, list => [...list, { title: 'task-start', message: text }])
+    // }
+    // if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
+    //   let statusMessage = str(parseObj(text).statusMessage) ?? ''
+    //   await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
+    //   await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
+    // }
 
     const failed = ran.isError === true || ran.deny !== undefined
     await update($, steps, list =>
@@ -472,8 +487,8 @@ export const register: Register = on => {
     const facts: { k: string; v: string; color?: string }[] = []
     if (r.projectType) {
       facts.push({
-        k: 'Project',
-        v: [r.projectType, r.toolkit && `toolkit ${r.toolkit}`, r.theme].filter(Boolean).join(' · '),
+        k: 'Project Type: ',
+        v: [r.projectType, r.toolkit && `Toolkit:  ${r.toolkit}`, `Theme: ${r.theme}`].filter(Boolean).join(' · '),
       })
     }
     if (r.sourceVersion) facts.push({ k: 'Version', v: `${r.sourceVersion}  →  v8` })
@@ -494,7 +509,7 @@ export const register: Register = on => {
     })
 
     let version =
-      <Text color="cyan" italic>{VERSION_STRING}</Text>
+      <Text color="cyan" italic>{await versionString($)}</Text>
 
     let buttons =
       <Box flexDirection="row" marginTop={1}>
