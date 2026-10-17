@@ -112,7 +112,7 @@ const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     case 'ToolResult': return { label: 'Tool Result', text: `${e.props.tool}\n${e.props.output}`, showNext: false, marginTop: 0 }
     case 'AbovePrompt': return { label: 'Above', text: e.props.bodyColumns, showNext: true, marginTop: 0 }
     case 'PromptHint': return { label: 'Hint', text: e.props.hint, showNext: false, marginTop: 0 }
-    case 'UserMessage': return { label: 'Prompt', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
+    case 'UserMessage': return { label: 'Prompt', text: e.props.text?.trimEnd(), showNext: false, marginTop: 0 }
     case 'ToolUse': return { label: 'Tool Use', text: e.props.text, showNext: true, marginTop: 0.155 }
     case 'ToolGroup': return { label: 'Tool Group', text: e.props.text, showNext: true, marginTop: 0 }
     case 'AssistantMessage': return { label: 'Message', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
