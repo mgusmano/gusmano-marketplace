@@ -137,7 +137,7 @@ export function subjectOf(e: ToolCallInput): string | undefined {
 
 const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) => {
   //const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: { text?: string; word?: string; hint?: string; } }) => {
-  if (e.component === 'zzzToolUse') {
+  if (e.component === 'CommandOutput') {
     $.ui.log(`renderMessage: ${JSON.stringify(e, null, 2)}`)
   }
   switch (e.component) {
@@ -148,7 +148,7 @@ const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     case 'ToolUse': return { label: 'Tool Use', text: e.props.output, showNext: false, marginTop: 0 }
     case 'ToolGroup': return { label: 'Tool Group', text: e.props.text, showNext: true, marginTop: 0 }
     case 'AssistantMessage': return { label: 'Message', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
-    case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: true, marginTop: 0 }
+    case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: false, marginTop: 0 }
     case 'Spinner': return { label: 'Spinner', text: e.props.word, showNext: true, marginTop: 0 }
     case 'SessionMode': return { label: 'Session Mode', text: '', showNext: true, marginTop: 0 }
     case 'InfoNotice': return { label: 'Notice', text: e.props.text, showNext: true, marginTop: 0 }
@@ -173,8 +173,8 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
         <Box marginTop={0.5} flexShrink={0}>
           <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha" />
         </Box>
-        <Box marginLeft={0.5}>
-          <Box flexDirection="row">
+        <Box marginLeft={0.5} alignItems="flex-start">
+          <Box flexDirection="row" alignItems="flex-start">
             <Box width={8} flexShrink={0} marginTop={0.04}>
               <Text color="cyan" weight="bold" italic={true}>{label}:</Text>
             </Box>
@@ -279,6 +279,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`)
     await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
+    await $.command.register({ name: 'callit', description: 'Call a tool' })
 
     const MAX_OPEN_TRIES = 10
     const openWhenSurface = async (tries = 1): Promise<void> => {
@@ -329,6 +330,31 @@ export const register: Register = on => {
     //timer = undefined
     return next(e)
   })
+
+  on('command.run', { command: 'callit' }, async ($, e, next) => {
+    await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
+
+    //const tool = 'Bash'; const command = 'ls';
+    const tool = `mcp__plugin_sencha_extjs-tools__task-start`; const name = 'task';
+    const r = await $.tool.call({ tool, name })
+    await update($, messages, list => [...list, { title: 'command.run:r', message: JSON.stringify(r, null, spaces) }]);
+
+    // // No surface attached (bare -p run): ui.open may never settle, so check first
+    // if ((await $.session.surfaces()).length === 0) {
+    //   return { text: 'Sencha pane could not open: no surface is attached' }
+    // }
+    // try {
+    //   const opened = await $.ui.open({ id: PANE, title: 'Sencha' })
+    //   if (!opened.isPlaced) return { text: `Sencha pane waiting: ${opened.reason}` }
+    // } catch {
+    //   return { text: 'Sencha pane could not open: no surface is attached' }
+    // }
+    const out = await next(e)
+   // return { text: 'success'}
+   return { ...out, text: JSON.stringify({ tool, name, text: r.text, args: e.args }) }
+  })
+
+
 
   on('command.run', { command: 'sencha' }, async $ => {
     await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
@@ -423,7 +449,7 @@ export const register: Register = on => {
 
 
 
-    
+
     const subject = subjectOf(e)
     await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
     const ran: any = await next(e)

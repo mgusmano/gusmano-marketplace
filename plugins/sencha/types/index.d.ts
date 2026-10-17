@@ -32,4 +32,15 @@ declare module 'claude-code' {
       messages: Message[] 
     }
   }
+  // The extjs-tools server is this mod's own, so it is never connected when the
+  // generated MCP types are written: declare its tools by hand for $.tool.call.
+  interface McpToolInputs {
+    'mcp__extjs-tools__task-start': {
+      name?: string
+      ttlMs?: number
+    }
+    'mcp__extjs-tools__task-get': {
+      taskId: string
+    }
+  }
 }
