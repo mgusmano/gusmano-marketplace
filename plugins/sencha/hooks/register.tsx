@@ -139,7 +139,7 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
     return (
       <Box flexDirection="row" alignItems="flex-start">
         <Box marginTop={0.5} flexShrink={0}>
-          <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha Ext JS" />
+          <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={15} height={12} alt="Sencha" />
         </Box>
         <Box marginLeft={0.5}>
           <Box flexDirection="row">
@@ -208,7 +208,7 @@ export const register: Register = on => {
     let img
     if (e.surface === 'terminal') {
       const { Image } = $.ui.resolve(e)
-       img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha Ext JS" /></Box>
+       img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
     }
 
     const beneath = await next(e)
@@ -218,7 +218,7 @@ export const register: Register = on => {
         <Box flexDirection="row">
           {img}
 
-          <Text color="cyan" italic>Sencha Ext JS</Text>
+          <Text color="cyan" italic>Sencha</Text>
           <Text dimColor> · </Text>
           <Text color="yellow" italic>Classic toolkit · Classic theme</Text>
         </Box>
@@ -243,7 +243,7 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     //$.ui.log(`session.start: ${VERSION_STRING} At ${new Date().toLocaleString()}`)
-    await $.command.register({ name: 'extjs', description: 'Open the Sencha Ext JS side pane' })
+    await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
 
     const MAX_OPEN_TRIES = 10
     const openWhenSurface = async (tries = 1): Promise<void> => {
@@ -294,19 +294,19 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'extjs' }, async $ => {
-    await update($, messages, list => [...list, { title: 'command.run', message: `command 'extjs' executed.` }]);
+  on('command.run', { command: 'sencha' }, async $ => {
+    await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
     // No surface attached (bare -p run): ui.open may never settle, so check first
     if ((await $.session.surfaces()).length === 0) {
-      return { text: 'Sencha Ext JS pane could not open: no surface is attached' }
+      return { text: 'Sencha pane could not open: no surface is attached' }
     }
     try {
-      const opened = await $.ui.open({ id: PANE, title: 'Sencha Ext JS' })
-      if (!opened.isPlaced) return { text: `Sencha Ext JS pane waiting: ${opened.reason}` }
+      const opened = await $.ui.open({ id: PANE, title: 'Sencha' })
+      if (!opened.isPlaced) return { text: `Sencha pane waiting: ${opened.reason}` }
     } catch {
-      return { text: 'Sencha Ext JS pane could not open: no surface is attached' }
+      return { text: 'Sencha pane could not open: no surface is attached' }
     }
-    return { text: 'Sencha Ext JS pane opened' }
+    return { text: 'Sencha pane opened' }
   })
 
   on('ui.close', async ($, e, next) => {
@@ -593,8 +593,8 @@ export const register: Register = on => {
       return (
         <Box flexDirection="column">
           <Box flexDirection="row">
-            <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha Ext JS" />
-            <Box marginLeft={2}><Text color="yellow" italic>Sencha Ext JS</Text></Box>
+            <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha" />
+            <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
             <Box marginLeft={2}>{version}</Box>
             <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
           </Box>
@@ -610,7 +610,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column">
         <Box flexDirection="row">
-          <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha Ext JS" /></Box>
+          <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
           <Box marginLeft={2}>{version}</Box>
           <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
         </Box>
