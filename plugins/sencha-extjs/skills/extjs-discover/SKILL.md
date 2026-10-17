@@ -110,7 +110,7 @@ description: Discovers Ext JS project details within a repository or workspace, 
       * **Lint Folders Failed (`<foldersFailed>`):** `<foldersFailed>`
 
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
-1. Run Model Context Protocol tool `extjs-tools_extjs-initilize-sencha-cmd` 
+1. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` 
         - rootPath=`<rootPath>`
         returning:
         - `<sourceRoot>` 
