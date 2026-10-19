@@ -1,6 +1,6 @@
 {
   "name": "sencha",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Sencha Claude Code Mod",
   "types": "./types/index.d.ts",
   "author": {
@@ -11,7 +11,7 @@
     "./"
   ],
   "mcpServers": {
-    "extjs-tools": {
+    "extjs-toolszzz": {
       "type": "stdio",
       "command": "npx",
       "args": [
@@ -21,11 +21,11 @@
       ],
       "env": {}
     },
-    "extjs-tools2": {
+    "extjs-tools": {
       "type": "stdio",
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/zzzExtJSToolsMCPServer.mjs"
+        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/ExtJSToolsMCPServer.mjs"
       ],
       "env": {}
     },
