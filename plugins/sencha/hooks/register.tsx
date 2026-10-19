@@ -206,9 +206,9 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
         <Box marginLeft={0.5} alignItems="flex-start">
           <Box flexDirection="row" alignItems="flex-start">
             <Box width={8} flexShrink={0} marginTop={0.04}>
-              <Text color="cyan" weight="bold" italic={true}>{label}:</Text>
+              <Text color="cyan" weight="bold" italic>{label}:</Text>
             </Box>
-            {!showNext && <Text color="rgb(145,186,76)" weight="regular">{text}</Text>}
+            {!showNext && <Text color="rgb(145,186,76)" bold>{text}</Text>}
           </Box>
         </Box>
         {showNext && <Box marginLeft={0.0} marginTop={marginTop}>{beneath}</Box>}
@@ -405,37 +405,6 @@ export const register: Register = on => {
     return { ...out, text: JSON.stringify({ text: 'polling done' }) }
   }).catch(($, e, next) => { doError($, e); next(e) });
 
-  // on('command.run', { command: 'callit' }, async ($, e, next) => {
-  //   let stop = false;
-  //   let message = 'done';
-  //   await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
-
-  //   //const senchaGenerateAppTool = `mcp__plugin_sencha_extjs-tools__sencha-generate-app`; const senchaGenerateAppName = 'sencha-generate-app';
-  //   //const args: any = { tool: senchaGenerateAppTool, cwd: '/Users/demo/upgrade/run', name: 'test01', toolkit: 'classic' }
-  //   const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
-  //   const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42run' }
-  //   $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
-  //     await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
-  //     if (extjsInitializeWithSenchaCmdResult.deny) {
-  //       message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
-  //       stop = true;
-  //     }
-  //   })
-
-  //   const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
-  //   while (!stop) {
-  //     const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-  //     //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
-  //     let textJson = JSON.parse(testGlobalGetResult.result[0].text)
-  //     let data = textJson.data;
-  //     await appendLines($, data as { name: string }[])
-  //     if (JSON.stringify(textJson).includes('polling done')) stop = true
-  //     await $.clock.sleep(500)
-  //   }
-  //   const out = await next(e)
-  //   return { ...out, text: message }
-  // }).catch(($, e, next) => { doError($, e); next(e) });
-
   on('command.run', { command: 'sencha' }, async $ => {
     await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
     // No surface attached (bare -p run): ui.open may never settle, so check first
@@ -513,66 +482,110 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('command.run', { command: 'callit' }, async ($, e, next) => {
+    await update($, lines, () => [])
     await update($, steps, () => [])
     await update($, messages, () => [])
 
-    const paneOpenArgs2: PaneOpenArgs = {
-      id: PANE2,
-      title: 'Initialize with Cmd',
-      //rows: 600,
-      columns: 300,
-      focus: true
-    }
-    await $.ui.open(paneOpenArgs2).catch((error) => {
-      $.ui.log(`session.start.ERROR: ${error.toString()}`)
-    })
-
+    let stop = false;
     let message = 'done';
-    let timer: { cancel: () => void } | undefined
-    await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
-    //const senchaGenerateAppTool = `mcp__plugin_sencha_extjs-tools__sencha-generate-app`; const senchaGenerateAppName = 'sencha-generate-app';
-    //const args: any = { tool: senchaGenerateAppTool, cwd: '/Users/demo/upgrade/run', name: 'test01', toolkit: 'classic' }
+    let out: any;
+
+    // await $.ui.open({ id: PANE2, title: 'extjs-initialize-with-sencha-cmd', focus: true }).catch((error) => {
+    //   $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
+    // })
+
     const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
-    const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42run' }
-    $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
+    const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42runClaude' }
+    out = $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
+      //out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
       await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
       if (extjsInitializeWithSenchaCmdResult.deny) {
         message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
-        timer?.cancel()
+        stop = true;
       }
-    }).catch(error => $.ui.log(`init.ERROR: ${String(error)}`))
-
-    // poll on a clock interval: each tick is its own dispatch, so the hook returns inside its budget
-    const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
-    let busy = false
-    timer = $.clock.every(500, () => {
-      if (busy) return
-      busy = true
-      void (async () => {
-        try {
-          const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-          let textJson = JSON.parse(testGlobalGetResult.result[0].text)
-          let data = textJson.data;
-          await appendLines($, data as { name: string }[])
-          if (JSON.stringify(textJson).includes('polling done')) timer?.cancel()
-        } catch (error) {
-          $.ui.log(`poll.ERROR: ${String(error)}`)
-          timer?.cancel()
-        } finally {
-          busy = false
-        }
-      })()
     })
-    const out = await next(e)
-    return { ...out, text: message }
+
+    return { text: 'running' }
+
+    // const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+    // while (!stop) {
+    //   const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+    //   //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
+    //   let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+    //   let data = textJson.data;
+    //   await appendLines($, data as { name: string }[])
+    //   if (JSON.stringify(textJson).includes('polling done')) stop = true
+    //   await $.clock.sleep(500)
+    // }
+
+
+    //     out = await next(e)
+    // return { ...out, text: message }
+    //await update($, steps, list => list.map(s => (s.id === id ? { ...s, status: 'done' as const } : s)))
+    // return out;
+    //return out;
+
+
+
+    // const paneOpenArgs2: PaneOpenArgs = {
+    //   id: PANE2,
+    //   title: 'Initialize with Cmd',
+    //   //rows: 600,
+    //   columns: 300,
+    //   focus: true
+    // }
+    // await $.ui.open(paneOpenArgs2).catch((error) => {
+    //   $.ui.log(`session.start.ERROR: ${error.toString()}`)
+    // })
+
+    // let message = 'done';
+    // let timer: { cancel: () => void } | undefined
+    // await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
+    // //const senchaGenerateAppTool = `mcp__plugin_sencha_extjs-tools__sencha-generate-app`; const senchaGenerateAppName = 'sencha-generate-app';
+    // //const args: any = { tool: senchaGenerateAppTool, cwd: '/Users/demo/upgrade/run', name: 'test01', toolkit: 'classic' }
+    // const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
+    // const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42run' }
+    // $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
+    //   await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+    //   if (extjsInitializeWithSenchaCmdResult.deny) {
+    //     message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
+    //     timer?.cancel()
+    //   }
+    // }).catch(error => $.ui.log(`init.ERROR: ${String(error)}`))
+
+    // await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult after', message: 'after' }]);
+
+    // // poll on a clock interval: each tick is its own dispatch, so the hook returns inside its budget
+    // const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+    // let busy = false
+    // timer = $.clock.every(500, async () => {
+    //   await update($, messages, list => [...list, { title: 'in timer', message: `busy ${busy}` }]);
+    //   if (busy) return
+    //   busy = true
+    //   void (async () => {
+    //     try {
+    //       const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+    //       let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+    //       let data = textJson.data;
+    //       await appendLines($, data as { name: string }[])
+    //       if (JSON.stringify(textJson).includes('polling done')) timer?.cancel()
+    //     } catch (error) {
+    //       $.ui.log(`poll.ERROR: ${String(error)}`)
+    //       timer?.cancel()
+    //     } finally {
+    //       busy = false
+    //     }
+    //   })()
+    // })
+    // const out = await next(e)
+    // return { ...out, text: message }
   }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('tool.call', async ($, e, next) => {
     // run tool mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd rootPath='/Users/demo/upgrade/run/ext42run
     let stop = false;
     let message = 'done';
-    //if (internalToolCall) return next(e)
-    //tool_use_id = e.tool_use_id;
+    let out: any;
     await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
@@ -583,25 +596,48 @@ export const register: Register = on => {
     await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
 
     if (e.tool === 'mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd') {
-      next(e).then(async extjsInitializeWithSenchaCmdResult => {
+      await $.ui.open({ id: PANE2, title: 'extjs-initialize-with-sencha-cmd', focus: true }).catch((error) => {
+        $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
+      })
+      out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
         await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
         if (extjsInitializeWithSenchaCmdResult.deny) {
           message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
           stop = true;
         }
       })
+
+      const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+      while (!stop) {
+        const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+        //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
+        let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+        let data = textJson.data;
+        await appendLines($, data as { name: string }[])
+        if (JSON.stringify(textJson).includes('polling done')) stop = true
+        await $.clock.sleep(500)
+      }
+
+      $.ui.log(`extjs-initialize-with-sencha-cmd done`)
+      await $.ui.open({ id: PANE, title: 'Sencha 2', focus: true }).catch((error) => {
+        $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
+      })
+
     }
-    const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
-    while (!stop) {
-      const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-      //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
-      let textJson = JSON.parse(testGlobalGetResult.result[0].text)
-      let data = textJson.data;
-      await appendLines($, data as { name: string }[])
-      if (JSON.stringify(textJson).includes('polling done')) stop = true
-      await $.clock.sleep(500)
+    else {
+      out = await next(e)
     }
-    const out = await next(e)
+    // const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+    // while (!stop) {
+    //   const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+    //   //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
+    //   let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+    //   let data = textJson.data;
+    //   await appendLines($, data as { name: string }[])
+    //   if (JSON.stringify(textJson).includes('polling done')) stop = true
+    //   await $.clock.sleep(500)
+    // }
+
     await update($, steps, list => list.map(s => (s.id === id ? { ...s, status: 'done' as const } : s)))
     return out;
     //return { ...out, text: message }
@@ -861,7 +897,7 @@ export const register: Register = on => {
           ))
         }
 
-        <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
+        {/* <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
         {
           linesEntries.length === 0 ? (
             <Text dimColor>No lines yet.</Text>
@@ -872,7 +908,7 @@ export const register: Register = on => {
               </Text>
             ))
           )
-        }
+        } */}
 
         <Box marginTop={2}><Text color="yellow" italic>HISTORY</Text></Box>
         {

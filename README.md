@@ -3,16 +3,16 @@
 > Marketplace of several Claude Code Plugins
 
 
-## Install the sencha-extjs plugin
+## Install the sencha plugin
 ```
 # set the marketplace
 claude plugin marketplace add mgusmano/gusmano-marketplace
 
 # install the plugin
-claude plugin uninstall sencha-extjs@gusmano-marketplace
+claude plugin uninstall sencha@gusmano-marketplace
 
 # update the plugin
-claude plugin update sencha-extjs@gusmano-marketplace
+claude plugin update sencha@gusmano-marketplace
 ```
 
 Now you can run "/extjs" inside claude code to open the Sencha Ext JS Pane

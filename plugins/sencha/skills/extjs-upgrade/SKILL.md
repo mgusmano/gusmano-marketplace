@@ -37,7 +37,8 @@ description: Determines Ext JS project details within a repository or workspace,
 3. **Branching Execution**
 
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
-1. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` 
+1. Only run this branch 1 time.
+2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` 
         - rootPath=`<rootPath>`
         returning:
         - `<sourceRoot>` 
@@ -47,17 +48,17 @@ description: Determines Ext JS project details within a repository or workspace,
         - `<augmentedFiles>`
     * if a result=fail is returned, then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
     * if result=success is returned, continue.
-2. Verify Linting in Apps Folders
+3. Verify Linting in Apps Folders
     * If there are any file names in `<augmentedFiles>` then fead each file name and find the text to the right of all `***ADDITIONAL MESSAGE:` markers.  For each found text read the text and confirm that the lint fix is conforms to the text - make needed fixes to the file if not correct - indicate with `// ***ADDITIONAL MESSAGE FIX IS IMPLEMENTED`.
     * If there are no file names in `<augmentedFiles>` then continue.
-3. Production Build & Validation
+4. Production Build & Validation
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Do the following steps for each `<appsFolder>` in `<sourceApps>` 
       a. Run Model Context Protocol tool `extjs-tools_sencha-app-build`
         - cwd=`<appsFolder>`
       b. Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to debug and resolve any compilation errors,
     * If an error is resolved, repeat starting at step 1. Start Server until all errrors are resolved.
-4. Dev Server & Smoke Test Validation
+5. Dev Server & Smoke Test Validation
     * Do the following steps for each `<appsFolder>` in `<sourceApps>` 
       a. Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
       b. Run Model Context Protocol tool `extjs-tools_sencha-app-watch`
@@ -69,7 +70,7 @@ description: Determines Ext JS project details within a repository or workspace,
       e. Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to resolve any runtime errors
       f. If an error is resolved, repeat starting at step 1a. Contonue until all errrors for `<appsFolder>` are resolved.
     * Do not move to the next `<appsFolder>` until all errrors are resolved.
-5. Cleanup and Documention Summary
+6. Cleanup and Documention Summary
     * Only start this step if all runtime errors are resolved.
     * Run Model Contect Protocol tool `extjs-tools_extjs-prettier-all`
         - folderPath=`<targetRoot>`
@@ -82,7 +83,7 @@ description: Determines Ext JS project details within a repository or workspace,
         -residual warnings
     * Output the final path to `<targetRoot>/UPGRADE.md`.
     * Do not outout any text summary, explain that the upgrate is now complete and that the summary is available in  `<name>/UPGRADE.md`
-6. Output Format
+7. Output Format
     * Return the final analysis in the following structured format:
       * **Source Project Type (`<projectType>`):** `senchaCmd` | `extGen` | `custom`
       * **Source Folder (`<sourceRoot>`):** `<path_to_sourceRoot>`
