@@ -19,14 +19,16 @@ export type UpgradeStep = {
 }
 
 export type Message = {
+  name?: string
   title: string
   message: string
 }
 
 declare module 'claude-code' {
   interface PluginState {
-    'sencha': { 
-      history: Message[]; 
+    'sencha': {
+      lines: { name: string }[];
+      history: Message[];
       run: UpgradeRun; 
       steps: UpgradeStep[]; 
       messages: Message[] 
@@ -41,6 +43,13 @@ declare module 'claude-code' {
     }
     'mcp__extjs-tools__task-get': {
       taskId: string
+    }
+    'mcp__plugin_sencha_extjs-tools__test-global-set': {
+      name?: string
+      value?: string
+    }
+    'mcp__plugin_sencha_extjs-tools__test-global-get': {
+      name?: string
     }
   }
 }

@@ -14,6 +14,7 @@ const versionString = async ($: EngineInterface): Promise<string> => {
 }
 
 const PANE = 'sencha'
+const PANE2 = 'sencha2'
 //let lastPlacement = ''
 const PREFIX = 'mcp__extjs-tools__'
 const spaces = 0
@@ -33,9 +34,11 @@ const parseObj = (text: string): Record<string, unknown> => {
   }
 }
 
+const lines = atom({ plugin: 'sencha', key: 'lines' } as const, [] as { name: string }[])
 const history = atom({ plugin: 'sencha', key: 'history' } as const, [] as Message[])
 // history is append-only, so only entries past the count already shown are added
 const historySeen = new Map<string, number>()
+let linesSeen = 0
 const run = atom({ plugin: 'sencha', key: 'run' } as const, {})
 const steps = atom({ plugin: 'sencha', key: 'steps' } as const, [])
 const messages = atom({ plugin: 'sencha', key: 'messages' } as const, [] as Message[])
@@ -60,10 +63,37 @@ const appendHistory = async ($: EngineInterface, task: Record<string, unknown>):
   const id = str(task.taskId)
   if (id === undefined) return 0
   const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
+  const name = str(task.taskName)
   const seen = historySeen.get(id) ?? 0
-  const fresh = entries.slice(seen).map(entry => ({ title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
+  const fresh = entries.slice(seen).map(entry => ({ name, title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
   historySeen.set(id, entries.length)
   if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
+  return fresh.length
+}
+
+// collapse consecutive equal items into one run: first and last item, and how many
+const runsOf = <T,>(items: T[], same: (a: T, b: T) => boolean): { first: T; last: T; count: number }[] => {
+  const runs: { first: T; last: T; count: number }[] = []
+  for (const item of items) {
+    const run = runs[runs.length - 1]
+    if (run && same(run.last, item)) {
+      run.last = item
+      run.count++
+    } else {
+      runs.push({ first: item, last: item, count: 1 })
+    }
+  }
+  return runs
+}
+
+// append only the lines entries not shown yet, oldest first
+const appendLines = async ($: EngineInterface, items: { name?: string }[]): Promise<number> => {
+  const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined ? [] : [{ name: item.name }])
+  linesSeen = items.length
+  if (fresh.length > 0) {
+    await update($, lines, list => [...list, ...fresh])
+    await $.ui.scroll({ in: PANE2, to: 'end' })
+  }
   return fresh.length
 }
 
@@ -137,7 +167,7 @@ export function subjectOf(e: ToolCallInput): string | undefined {
 
 const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) => {
   //const dataFor = ($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: { text?: string; word?: string; hint?: string; } }) => {
-  if (e.component === 'CommandOutput') {
+  if (e.component === 'zzzCommandOutput') {
     $.ui.log(`renderMessage: ${JSON.stringify(e, null, 2)}`)
   }
   switch (e.component) {
@@ -209,6 +239,10 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
   )
 }
 
+const doError = ($: any, e: any) => {
+  $.ui.log(`error: ${JSON.stringify(e)}`)
+}
+
 export const register: Register = on => {
   let tool_use_id = ''
   let startedAt = 0
@@ -221,21 +255,34 @@ export const register: Register = on => {
   const polling = new Set<string>()
   let internalToolCall = false
 
-  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next));
-  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next));
-  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next));
+  //.catch(($, e, next) => next(e))
+
+  // on('tool.call', async ($, e, next) => {
+  //   const out = await next(e)
+  //   return out;
+  // }).catch(($, e, next) => next(e))
+
+
+
+
+
+
+
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
@@ -260,7 +307,7 @@ export const register: Register = on => {
         {beneath}
       </Box>
     )
-  });
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   // on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => {
   //   //if (e.requestId !== tool_use_id) return next(e)
@@ -280,6 +327,7 @@ export const register: Register = on => {
     //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`)
     await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
     await $.command.register({ name: 'callit', description: 'Call a tool' })
+    await $.command.register({ name: 'ask', description: 'Ask Example' })
 
     const MAX_OPEN_TRIES = 10
     const openWhenSurface = async (tries = 1): Promise<void> => {
@@ -300,18 +348,31 @@ export const register: Register = on => {
       await $.ui.open(paneOpenArgs).catch((error) => {
         $.ui.log(`session.start.ERROR: ${error.toString()}`)
       })
+
+      // const paneOpenArgs2: PaneOpenArgs = {
+      //   id: PANE2,
+      //   title: 'Sencha2',
+      //   //rows: 600,
+      //   columns: 300,
+      //   focus: true
+      // }
+      // await $.ui.open(paneOpenArgs2).catch((error) => {
+      //   $.ui.log(`session.start.ERROR: ${error.toString()}`)
+      // })
+
+
     }
     $.clock.after(500, () => { void openWhenSurface() })
 
     const version = await versionString($)
     await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${version}, time: ${new Date().toLocaleString()}` }]);
     return next(e)
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   // on('ui.open', async ($, e, next) => {
   //   $.ui.log(`ui.open: ${await versionString($)} At ${new Date().toLocaleString()}`)
   //   return next(e)
-  // })
+  // }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('session.end', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'session.end', message: JSON.stringify(e, null, spaces) }]);
@@ -329,32 +390,51 @@ export const register: Register = on => {
     //timer?.cancel()
     //timer = undefined
     return next(e)
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
-  on('command.run', { command: 'callit' }, async ($, e, next) => {
-    await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
-
-    //const tool = 'Bash'; const command = 'ls';
-    const tool = `mcp__plugin_sencha_extjs-tools__task-start`; const name = 'task';
-    const r = await $.tool.call({ tool, name })
-    await update($, messages, list => [...list, { title: 'command.run:r', message: JSON.stringify(r, null, spaces) }]);
-
-    // // No surface attached (bare -p run): ui.open may never settle, so check first
-    // if ((await $.session.surfaces()).length === 0) {
-    //   return { text: 'Sencha pane could not open: no surface is attached' }
-    // }
-    // try {
-    //   const opened = await $.ui.open({ id: PANE, title: 'Sencha' })
-    //   if (!opened.isPlaced) return { text: `Sencha pane waiting: ${opened.reason}` }
-    // } catch {
-    //   return { text: 'Sencha pane could not open: no surface is attached' }
-    // }
+  on('command.run', { command: 'ask' }, async ($, e, next) => {
+    const tool = `mcp__plugin_sencha_extjs-tools__test-global-set`; const name = 'test-global-set';
+    const value = 'hello'
+    const { decision } = await $.tool.check({ tool, input: { name, value } })
+    //$.ui.log(`decision ${decision}`)
+    if (decision !== 'allow') {
+      const answer = await $.ui.ask(`SET Allow ${name} with value '${value}'?`, ['Yes', 'No'])
+      if (answer !== 'Yes') return { text: 'ask cancelled' }
+    }
     const out = await next(e)
-   // return { text: 'success'}
-   return { ...out, text: JSON.stringify({ tool, name, text: r.text, args: e.args }) }
-  })
+    return { ...out, text: JSON.stringify({ text: 'polling done' }) }
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
+  // on('command.run', { command: 'callit' }, async ($, e, next) => {
+  //   let stop = false;
+  //   let message = 'done';
+  //   await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
 
+  //   //const senchaGenerateAppTool = `mcp__plugin_sencha_extjs-tools__sencha-generate-app`; const senchaGenerateAppName = 'sencha-generate-app';
+  //   //const args: any = { tool: senchaGenerateAppTool, cwd: '/Users/demo/upgrade/run', name: 'test01', toolkit: 'classic' }
+  //   const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
+  //   const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42run' }
+  //   $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
+  //     await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+  //     if (extjsInitializeWithSenchaCmdResult.deny) {
+  //       message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
+  //       stop = true;
+  //     }
+  //   })
+
+  //   const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+  //   while (!stop) {
+  //     const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+  //     //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
+  //     let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+  //     let data = textJson.data;
+  //     await appendLines($, data as { name: string }[])
+  //     if (JSON.stringify(textJson).includes('polling done')) stop = true
+  //     await $.clock.sleep(500)
+  //   }
+  //   const out = await next(e)
+  //   return { ...out, text: message }
+  // }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('command.run', { command: 'sencha' }, async $ => {
     await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
@@ -363,32 +443,32 @@ export const register: Register = on => {
       return { text: 'Sencha pane could not open: no surface is attached' }
     }
     try {
-      const opened = await $.ui.open({ id: PANE, title: 'Sencha' })
+      const opened = await $.ui.open({ id: PANE, title: 'Sencha', focus: true })
       if (!opened.isPlaced) return { text: `Sencha pane waiting: ${opened.reason}` }
     } catch {
       return { text: 'Sencha pane could not open: no surface is attached' }
     }
     return { text: 'Sencha pane opened' }
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('ui.close', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'ui.close', message: JSON.stringify(e, null, spaces) }]);
     if (e.id !== PANE) return next(e)
     //isPaneOpen = false
     return next(e)
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('ui.press', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
     if (e.plugin !== $.plugin.name || e.requestId !== PANE) return next(e)
     if (e.element === 'close') await $.ui.close({ id: PANE }).catch(() => undefined)
     return next(e)
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   // on('skill.prompt', async ($, e, next) => {
   //   await update($, messages, l => [...l, { title: 'skill.prompt', message: e.skill }])
   //   return next(e)
-  // })
+  // }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('prompt.submit', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'prompt.submit', message: JSON.stringify(e, null, spaces) }]);
@@ -397,7 +477,7 @@ export const register: Register = on => {
     //$.ui.toast(`toast: Started At ${startedAt}`)
     //$.ui.log(`log: Started At ${startedAt}`)
     return next(e)
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('turn.start', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'turn.start', message: JSON.stringify(e, null, spaces) }]);
@@ -412,13 +492,13 @@ export const register: Register = on => {
     startedAt = await $.clock.now()
     tools = 0
     return next(e)
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('turn.step', async function* ($, e, next) {
     await update($, messages, list => [...list, { title: 'turn.step: ', message: `index: ${e.index}, messageCount: ${e.messageCount}` }]);
     await update($, messages, list => [...list, { title: 'turn.step', message: JSON.stringify(e, null, spaces) }]);
     for await (const c of next(e)) yield c
-  })
+  }) //.catch(($, e, next) => { doError($, e); next(e) });
 
   on('turn.complete', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify(e, null, spaces) }]);
@@ -430,108 +510,201 @@ export const register: Register = on => {
     const result = await next(e)
     return result;
     //return { ...result, text: `That turn took ${seconds}s` }
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
+
+  on('command.run', { command: 'callit' }, async ($, e, next) => {
+    await update($, steps, () => [])
+    await update($, messages, () => [])
+
+    const paneOpenArgs2: PaneOpenArgs = {
+      id: PANE2,
+      title: 'Initialize with Cmd',
+      //rows: 600,
+      columns: 300,
+      focus: true
+    }
+    await $.ui.open(paneOpenArgs2).catch((error) => {
+      $.ui.log(`session.start.ERROR: ${error.toString()}`)
+    })
+
+    let message = 'done';
+    let timer: { cancel: () => void } | undefined
+    await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
+    //const senchaGenerateAppTool = `mcp__plugin_sencha_extjs-tools__sencha-generate-app`; const senchaGenerateAppName = 'sencha-generate-app';
+    //const args: any = { tool: senchaGenerateAppTool, cwd: '/Users/demo/upgrade/run', name: 'test01', toolkit: 'classic' }
+    const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
+    const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42run' }
+    $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
+      await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+      if (extjsInitializeWithSenchaCmdResult.deny) {
+        message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
+        timer?.cancel()
+      }
+    }).catch(error => $.ui.log(`init.ERROR: ${String(error)}`))
+
+    // poll on a clock interval: each tick is its own dispatch, so the hook returns inside its budget
+    const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+    let busy = false
+    timer = $.clock.every(500, () => {
+      if (busy) return
+      busy = true
+      void (async () => {
+        try {
+          const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+          let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+          let data = textJson.data;
+          await appendLines($, data as { name: string }[])
+          if (JSON.stringify(textJson).includes('polling done')) timer?.cancel()
+        } catch (error) {
+          $.ui.log(`poll.ERROR: ${String(error)}`)
+          timer?.cancel()
+        } finally {
+          busy = false
+        }
+      })()
+    })
+    const out = await next(e)
+    return { ...out, text: message }
+  }).catch(($, e, next) => { doError($, e); next(e) });
 
   on('tool.call', async ($, e, next) => {
-    if (internalToolCall) return next(e)
-    tool_use_id = e.tool_use_id;
+    // run tool mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd rootPath='/Users/demo/upgrade/run/ext42run
+    let stop = false;
+    let message = 'done';
+    //if (internalToolCall) return next(e)
+    //tool_use_id = e.tool_use_id;
     await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
-    const id = e.tool_use_id
+    const id = e.tool_use_id ?? `${e.tool}-${Math.random()}`
     const tool = e.tool.slice(e.tool.lastIndexOf('_') + 1)
-
-    $.ui.log(`tool: ${tool}`)
-
-    // example: pin a note to this tool call's row (undefined clears it)
-    $.ui.notice(id, `${tool} running`)
-
-
-
-
     const subject = subjectOf(e)
     await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
-    const ran: any = await next(e)
-    $.ui.notice(id, undefined)
-    await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
-    if (tool === 'task-start' || tool === 'task-get') {
-      const task = taskOf(ran)
-      taskId = str(task.taskId) ?? taskId
-      $.ui.log(`taskId: ${taskId}`)
 
-      //if (taskId !== undefined && !polling.has(taskId)) {
-      if (taskId !== undefined) {
-        $.ui.log(`append: ${taskId}`)
-        const added = await appendHistory($, task)
-        if (added === 0) await update($, messages, list => [...list, { title: `history:${tool}`, message: `taskId: ${taskId} · entries: ${(task.history as unknown[] | undefined)?.length ?? 0}` }])
-      }
-      else {
-        $.ui.log(`NO append: ${taskId}`)
-      }
-      // the model may not poll, so the pane polls the task itself until it ends
-      if (tool === 'task-start' && taskId !== undefined && !polling.has(taskId)) {
-        const name = e.tool.replace(/task-start$/, 'task-get')
-        const pollId = taskId
-        polling.add(pollId)
-        const step = async (tries: number): Promise<void> => {
-          if (tries <= 0 || !polling.has(pollId)) {
-            polling.delete(pollId)
-            return
-          }
-          internalToolCall = true
-          let res: any
-          try {
-            res = await $.tool.call({ tool: name, taskId: pollId } as any)
-          } finally {
-            internalToolCall = false
-          }
-          const t = taskOf(res)
-          const state = str(t.status)
-          await appendHistory($, t)
-          if (state === 'completed' || state === 'failed' || state === 'cancelled') {
-            polling.delete(pollId)
-            return
-          }
-          $.clock.after(2000, () => { void step(tries - 1) })
+    if (e.tool === 'mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd') {
+      next(e).then(async extjsInitializeWithSenchaCmdResult => {
+        await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+        if (extjsInitializeWithSenchaCmdResult.deny) {
+          message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
+          stop = true;
         }
-        $.clock.after(2000, () => { void step(300) })
-      }
+      })
     }
+    const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
+    while (!stop) {
+      const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+      //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
+      let textJson = JSON.parse(testGlobalGetResult.result[0].text)
+      let data = textJson.data;
+      await appendLines($, data as { name: string }[])
+      if (JSON.stringify(textJson).includes('polling done')) stop = true
+      await $.clock.sleep(500)
+    }
+    const out = await next(e)
+    await update($, steps, list => list.map(s => (s.id === id ? { ...s, status: 'done' as const } : s)))
+    return out;
+    //return { ...out, text: message }
 
-    //await update($, messages, list => [...list, { title: 'tool', message: `tool: ${tool}` }]);
+    // //$.ui.log(`tool: ${tool}`)
+    // // example: pin a note to this tool call's row (undefined clears it)
+    // //$.ui.notice(id, `${tool} running`)
 
-    // if (tool === 'job-status') {
-    //   const result = ran.result as Array<{ text?: string }> | undefined
-    //   const statusJson = parseObj(result?.[0]?.text ?? '') as { state?: string; percent?: number; message?: string }
-    //   //await update($, messages, list => [...list, { title: 'status', message: JSON.stringify(result?.[0]?.text, null, spaces) }]);
-    //   await update($, messages, list => [...list, { title: 'status', message: `${statusJson.state}: ${statusJson.percent}% - ${statusJson.message}` }]);
+    // const subject = subjectOf(e)
+    // await update($, steps, list => [...list, { id: e.tool, tool, subject, status: 'runs' as const }].slice(-60))
+
+    // if (e.tool === 'mcp__plugin_sencha_extjs-tools__sencha-generate-app') {
+    //   return { text: 'sencha-generate-app' }
     // }
-
-    // const blocks = ran.result as Array<{ text?: string }> | undefined
-    // const text = blocks?.[0]?.text ?? ''
-    // if (tool === 'task-start') {
-    //   // a start result that is not JSON keeps the previous task id
-    //   const started = parseObj(text)
-    //   taskId = str(started.taskId) ?? taskId
-    //   let statusMessage = str(started.statusMessage) ?? ''
-    //   await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
-    //   await update($, messages, list => [...list, { title: 'task-start', message: text }])
+    // else {
+    //   const ran: any = await next(e)
+    //   return ran
     // }
-    // if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
-    //   let statusMessage = str(parseObj(text).statusMessage) ?? ''
-    //   await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
-    //   await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
-    // }
-
-    const failed = ran.isError === true || ran.deny !== undefined
-    await update($, steps, list =>
-      list.map(one => (one.id === id ? { ...one, status: failed ? ('fail' as const) : ('done' as const) } : one)),
-    )
-    if (!failed) await update($, run, prev => absorb(tool, ran.text, prev))
-    return ran
-    // Bookkeeping only: never let a pane failure change what the tool does.
   }).catch(($, e, next) => next(e))
+
+
+
+
+
+  // //$.ui.notice(id, undefined)
+  // await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
+  // if (tool === 'task-start' || tool === 'task-get') {
+  //   const task = taskOf(ran)
+  //   taskId = str(task.taskId) ?? taskId
+  //   $.ui.log(`taskId: ${taskId}`)
+
+  //   //if (taskId !== undefined && !polling.has(taskId)) {
+  //   if (taskId !== undefined) {
+  //     $.ui.log(`append: ${taskId}`)
+  //     const added = await appendHistory($, task)
+  //     if (added === 0) await update($, messages, list => [...list, { title: `history:${tool}`, message: `taskId: ${taskId} · entries: ${(task.history as unknown[] | undefined)?.length ?? 0}` }])
+  //   }
+  //   else {
+  //     $.ui.log(`NO append: ${taskId}`)
+  //   }
+  //   // the model may not poll, so the pane polls the task itself until it ends
+  //   if (tool === 'task-start' && taskId !== undefined && !polling.has(taskId)) {
+  //     const name = e.tool.replace(/task-start$/, 'task-get')
+  //     const pollId = taskId
+  //     polling.add(pollId)
+  //     const step = async (tries: number): Promise<void> => {
+  //       if (tries <= 0 || !polling.has(pollId)) {
+  //         polling.delete(pollId)
+  //         return
+  //       }
+  //       internalToolCall = true
+  //       let res: any
+  //       try {
+  //         res = await $.tool.call({ tool: name, taskId: pollId } as any)
+  //       } finally {
+  //         internalToolCall = false
+  //       }
+  //       const t = taskOf(res)
+  //       const state = str(t.status)
+  //       await appendHistory($, t)
+  //       if (state === 'completed' || state === 'failed' || state === 'cancelled') {
+  //         polling.delete(pollId)
+  //         return
+  //       }
+  //       $.clock.after(2000, () => { void step(tries - 1) })
+  //     }
+  //     $.clock.after(2000, () => { void step(300) })
+  //   }
+  // }
+
+  // //await update($, messages, list => [...list, { title: 'tool', message: `tool: ${tool}` }]);
+
+  // // if (tool === 'job-status') {
+  // //   const result = ran.result as Array<{ text?: string }> | undefined
+  // //   const statusJson = parseObj(result?.[0]?.text ?? '') as { state?: string; percent?: number; message?: string }
+  // //   //await update($, messages, list => [...list, { title: 'status', message: JSON.stringify(result?.[0]?.text, null, spaces) }]);
+  // //   await update($, messages, list => [...list, { title: 'status', message: `${statusJson.state}: ${statusJson.percent}% - ${statusJson.message}` }]);
+  // // }
+
+  // // const blocks = ran.result as Array<{ text?: string }> | undefined
+  // // const text = blocks?.[0]?.text ?? ''
+  // // if (tool === 'task-start') {
+  // //   // a start result that is not JSON keeps the previous task id
+  // //   const started = parseObj(text)
+  // //   taskId = str(started.taskId) ?? taskId
+  // //   let statusMessage = str(started.statusMessage) ?? ''
+  // //   await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
+  // //   await update($, messages, list => [...list, { title: 'task-start', message: text }])
+  // // }
+  // // if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
+  // //   let statusMessage = str(parseObj(text).statusMessage) ?? ''
+  // //   await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
+  // //   await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
+  // // }
+
+  // const failed = ran.isError === true || ran.deny !== undefined
+  // await update($, steps, list =>
+  //   list.map(one => (one.id === id ? { ...one, status: failed ? ('fail' as const) : ('done' as const) } : one)),
+  // )
+  // if (!failed) await update($, run, prev => absorb(tool, ran.text, prev))
+  // return ran
+  // // Bookkeeping only: never let a pane failure change what the tool does.
+  // }).catch(($, e, next) => next(e))
 
   // on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
   //   const ran = await next({ ...e, command: e.command.trim() })
@@ -573,6 +746,41 @@ export const register: Register = on => {
   // })
 
 
+  //     <Box flexDirection="column">
+  //     <Box flexDirection="row">
+  //       <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha" />
+  //       <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
+  //       <Box marginLeft={2}>{version}</Box>
+  //       <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
+  //     </Box>
+  //     {buttons}
+  //     {body}
+  //     {bottom}
+  //   </Box>
+  // )
+
+  on('ui.render', { component: 'Pane', requestId: PANE2 }, async ($, e) => {
+    const linesEntries: { name: string }[] = await read($, lines)
+    const { Box, Text, Button } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="column">
+
+        <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
+        {
+          linesEntries.length === 0 ? (
+            <Text dimColor>No lines yet.</Text>
+          ) : (
+            linesEntries.map((l, i) => (
+              <Text key={`line${i}`}>
+                <Text color="cyan">{l.name}</Text>
+              </Text>
+            ))
+          )
+        }
+      </Box>
+    )
+  }).catch(($, e, next) => { doError($, e); next(e) });
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     // // Log placement only when it changes, not on every render
@@ -584,6 +792,7 @@ export const register: Register = on => {
     const r: UpgradeRun = await read($, run)
     const list: UpgradeStep[] = await read($, steps)
     const feed: Message[] = await read($, messages)
+    const linesEntries: { name: string }[] = await read($, lines)
     const historyEntries: Message[] = await read($, history)
     const facts: { k: string; v: string; color?: string }[] = []
     if (r.projectType) {
@@ -621,12 +830,25 @@ export const register: Register = on => {
             await update($, steps, () => [])
             await update($, messages, () => [])
             await update($, history, () => [])
+            await update($, lines, () => [])
+            linesSeen = 0
           }}></Button>
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
           <Button plain={true} key="close" label="close" onPress={() => { }} />
         </Box>
+        <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
+          <Button plain={true} key="pane2" label="pane2" onPress={async () => {
+            await $.ui.open({ id: PANE2, title: 'Initialize with Cmd', focus: true }).catch((error) => {
+              $.ui.log(`pane2.ERROR: ${error.toString()}`)
+            })
+          }} />
+        </Box>
       </Box>;
+
+    // one row per run of identical tool calls and steps
+    const listRuns = runsOf(list, (a, b) => a.tool === b.tool && a.subject === b.subject)
+    const feedRuns = runsOf(feed, (a, b) => a.title === b.title && a.message === b.message)
 
     let body =
       <Box flexDirection="column">
@@ -639,6 +861,19 @@ export const register: Register = on => {
           ))
         }
 
+        <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
+        {
+          linesEntries.length === 0 ? (
+            <Text dimColor>No lines yet.</Text>
+          ) : (
+            linesEntries.map((l, i) => (
+              <Text key={`line${i}`}>
+                <Text color="cyan">{l.name}</Text>
+              </Text>
+            ))
+          )
+        }
+
         <Box marginTop={2}><Text color="yellow" italic>HISTORY</Text></Box>
         {
           historyEntries.length === 0 ? (
@@ -647,7 +882,7 @@ export const register: Register = on => {
             historyEntries.map((s, i) => (
               <Text key={`step${i}`}>
                 <Text color="cyan">{s.title}</Text>
-                <Text dimColor> {s.message}</Text>
+                <Text dimColor> {s.message} {JSON.stringify(s)}</Text>
               </Text>
             ))
           )
@@ -655,22 +890,26 @@ export const register: Register = on => {
 
         <Box marginTop={2}><Text color="yellow" italic>TOOL CALLS</Text></Box>
         {
-          list.length === 0 ? (
+          listRuns.length === 0 ? (
             <Text dimColor>No tool calls yet.</Text>
           ) : (
-            list.map(s => (
-              <Box key={s.id} flexDirection="row" alignItems="flex-start">
-                <Box width={2} flexShrink={0}>
+            listRuns.map(run => {
+              const s = run.last
+              return (
+                <Box key={run.first.id} flexDirection="row" alignItems="flex-start">
+                  <Box width={2} flexShrink={0}>
+                    <Text color={s.status === 'fail' ? 'error' : s.status === 'done' ? 'success' : 'warning'}>
+                      {s.status === 'runs' ? '•' : s.status === 'done' ? '✓' : '✗'}
+                    </Text>
+                  </Box>
                   <Text color={s.status === 'fail' ? 'error' : s.status === 'done' ? 'success' : 'warning'}>
-                    {s.status === 'runs' ? '•' : s.status === 'done' ? '✓' : '✗'}
+                    {s.tool}
+                    {run.count > 1 ? <Text dimColor>{` (${run.count})`}</Text> : null}
+                    {s.subject ? <Text dimColor>{` · ${tail(s.subject, 1280)}`}</Text> : null}
                   </Text>
                 </Box>
-                <Text color={s.status === 'fail' ? 'error' : s.status === 'done' ? 'success' : 'warning'}>
-                  {s.tool}
-                  {s.subject ? <Text dimColor>{` · ${tail(s.subject, 1280)}`}</Text> : null}
-                </Text>
-              </Box>
-            ))
+              )
+            })
           )
         }
         <Box marginTop={2}><Text color="yellow" italic>STEPS</Text></Box>
@@ -678,10 +917,11 @@ export const register: Register = on => {
           feed.length === 0 ? (
             <Text dimColor>No steps yet.</Text>
           ) : (
-            feed.map((s, i) => (
+            feedRuns.map((run, i) => (
               <Text key={`step${i}`}>
-                <Text color="cyan">{s.title}</Text>
-                <Text dimColor> {s.message}</Text>
+                <Text color="cyan">{run.last.title}</Text>
+                {run.count > 1 ? <Text dimColor>{` (${run.count})`}</Text> : null}
+                <Text dimColor> {run.last.message}</Text>
               </Text>
             ))
           )
@@ -697,6 +937,8 @@ export const register: Register = on => {
             await update($, steps, () => [])
             await update($, messages, () => [])
             await update($, history, () => [])
+            await update($, lines, () => [])
+            linesSeen = 0
           }}></Button>
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
@@ -735,5 +977,5 @@ export const register: Register = on => {
         {bottom}
       </Box>
     )
-  })
+  }).catch(($, e, next) => { doError($, e); next(e) });
 }
