@@ -14,9 +14,23 @@ let sections: ExpanderSection[] = [
     id: 'log',
     title: 'activity log',
     expanded: false,
-    items: [{ text: 'session.start', color: 'red' }, 'command.register  clienttest', 'ui.open  Client', { text: 'ui.render  Pane', dim: true }, 'ready'],
+    items: [
+      { text: 'session.start', color: 'green' },
+      'command.register  clienttest',
+      'ui.open  Client',
+      { text: 'ui.render  Pane', dim: true },
+      'ready'
+    ],
   },
-  { id: 'notes', title: 'notes', expanded: true, items: ['first note', 'second note'] },
+  {
+    id: 'notes',
+    title: 'notes',
+    expanded: false,
+    items: [
+      'first note',
+      'second note'
+    ]
+  },
 ]
 
 const doError = ($: any, e: any) => {
@@ -132,6 +146,8 @@ export const register: Register = (on: On) => {
           addItemToLatestSection()
           $.ui.invalidate('ui.render')
         }}>Add Item to Latest Section</Button>
+
+       <Box marginTop={1}></Box>
 
         <Client key="expander" module="./expander.tsx" props={expanderProps() satisfies ExpanderProps} />
 
