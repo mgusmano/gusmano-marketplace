@@ -1,0 +1,12 @@
+    {
+      "extjs-toolszszz": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "tsx",
+          "/Users/marcgusmano/@/vNext/MCPServers/src/ExtJSToolsMCPServer.ts"
+        ],
+        "env": {}
+      }
+    }

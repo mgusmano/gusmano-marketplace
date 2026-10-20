@@ -6,6 +6,7 @@ description: Determines Ext JS project details within a repository or workspace,
 # Ext JS Upgrade Expert
 
 ## Core Rules
+* At the start of every task, output a structured status box or checklist using markdown code blocks so the progress is explicitly visible in the terminal. If available, use ToDos or todowrite or todowrite Model Context Protocol tool to document progress
 * **Constraint**: Leave unrelated code untouched
 * **Thinking**: Be terse when creating and outputting thinking/thought tokens
 * **Model Context Protocol Tools**: Always call Model Context Protocol Tools directly via Model Context Protocol, never via Bash or Terminal. 
@@ -46,35 +47,38 @@ description: Determines Ext JS project details within a repository or workspace,
         - `<sourcePackages>`
         - `<targetRoot>`
         - `<augmentedFiles>`
-    * if a result=fail is returned, then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
+    * if a result=fail is returned , then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
     * if result=success is returned, continue.
 3. Verify Linting in Apps Folders
     * If there are any file names in `<augmentedFiles>` then fead each file name and find the text to the right of all `***ADDITIONAL MESSAGE:` markers.  For each found text read the text and confirm that the lint fix is conforms to the text - make needed fixes to the file if not correct - indicate with `// ***ADDITIONAL MESSAGE FIX IS IMPLEMENTED`.
     * If there are no file names in `<augmentedFiles>` then continue.
 4. Production Build & Validation
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
-    * Do the following steps for each `<appsFolder>` in `<sourceApps>` 
+    * Do the following steps for each `<appFolder>` in `<sourceApps>` 
       a. Run Model Context Protocol tool `extjs-tools_sencha-app-build`
-        - cwd=`<appsFolder>`
+        - cwd=`<appFolder>`
       b. Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to debug and resolve any compilation errors,
     * If an error is resolved, repeat starting at step 1. Start Server until all errrors are resolved.
 5. Dev Server & Smoke Test Validation
-    * Do the following steps for each `<appsFolder>` in `<sourceApps>` 
+    * Do the following steps for each `<appFolder>` in `<sourceApps>` 
+      * assign `<currentAppPath>` to `<appPath>` in `<sourceApps>` 
       a. Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
       b. Run Model Context Protocol tool `extjs-tools_sencha-app-watch`
-        - cwd=`<appsFolder>`
+        - cwd=`<appFolder>`
         and wait for the server ready signal.
-      c. Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer` to produce basic smoke test to find runtime errors.  
+      c. Run Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer`
+        - appPath=`<currentAppPath>`
+        * to produce basic smoke test to find runtime errors. 
         * Never run puppeteer on its own - only use this Model Context Protocol tool.
         * Fix any errors and rerun from the beginning of Smoke Test until no more errors.
       e. Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to resolve any runtime errors
-      f. If an error is resolved, repeat starting at step 1a. Contonue until all errrors for `<appsFolder>` are resolved.
-    * Do not move to the next `<appsFolder>` until all errrors are resolved.
+      f. If an error is resolved, repeat starting at step 1a. Contonue until all errrors for `<appFolder>` are resolved.
+    * Do not move to the next `<appFolder>` until all errrors are resolved.
 6. Cleanup and Documention Summary
     * Only start this step if all runtime errors are resolved.
     * Run Model Contect Protocol tool `extjs-tools_extjs-prettier-all`
         - folderPath=`<targetRoot>`
-    * Show the app in an inline browser at `http://localhost:1977`
+    * Show each `<appFolder>` in `<sourceApps>` in an inline browser at `http://localhost:1977/<currentAppPath>`
     * Create `<targetRoot>/UPGRADE.md` documenting:
         -steps
         -changes

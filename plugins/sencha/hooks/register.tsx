@@ -1,6 +1,8 @@
 import type { EngineInterface, Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
+import type { ButtonProps } from './button'
+
 
 export type Turn = { seconds: number; tools: number }
 
@@ -15,6 +17,7 @@ const versionString = async ($: EngineInterface): Promise<string> => {
 
 const PANE = 'sencha'
 const PANE2 = 'sencha2'
+const PANETEST = 'senchatest'
 //let lastPlacement = ''
 const PREFIX = 'mcp__extjs-tools__'
 const spaces = 0
@@ -262,27 +265,65 @@ export const register: Register = on => {
   //   return out;
   // }).catch(($, e, next) => next(e))
 
+  // on('command.run', { command: 'test' }, async ($, e, next) => {
+  //   const paneOpenArgs: PaneOpenArgs = {
+  //     id: PANETEST,
+  //     title: 'Test',
+  //     //rows: 600,
+  //     columns: 100,
+  //     focus: true
+  //   }
+  //   await $.ui.open(paneOpenArgs).catch((error) => {
+  //     $.ui.log(`PANETEST.ERROR: ${error.toString()}`)
+  //   })
+  //   const out = await next(e)
+  //   return { ...out, text: JSON.stringify({ text: JSON.stringify(e) }) }
+  // }).catch(($, e, next) => { doError($, e); return next(e) });
+
+  // on('ui.render', { component: 'Pane', requestId: PANETEST }, async ($, e, next) => {
+  //   if (e.surface !== 'terminal' && e.surface !== 'desktop') return next(e)
+  //   const { Box, Text, Button, Client } = $.ui.resolve(e)
+  //   const button = (b: ButtonProps) => <Client key={`button-${b.id}`} module="./button.tsx" props={{ id: b.id, label: b.label, dim: b.dim } satisfies ButtonProps} />
+  //   let glyphSetting = 'auto'
+  //   let noNerd = false
+  //   const unicode = glyphSetting === 'plain' || (glyphSetting === 'auto' && (noNerd || e.surface === 'desktop'))
+  //   const external = { id: 'external', label: unicode ? '↗' : '\u{f08e}', dim: true, hint: 'open in default app' }
+
+  //   const name = "marc"
+  //   const hint = (buttons: { id: string; hint: string }[], title: number) => {
+  //     //const text = buttons.find(b => b.id === hovered)?.hint
+  //     const text = 'the hint'
+  //     if (!text) return null
+  //     const room = e.props.bodyColumns - title - buttons.length * (e.surface === 'desktop' ? 3 : 2) - 2
+  //     //eturn text.length <= room ? <Text color={theme.muted}>{`${text} `}</Text> : null
+  //     return text.length <= room ? <Text color='cyan'>{`${text} `}</Text> : null
+  //   }
+
+  //   return (
+  //     <Box flexDirection="row">
+  //       <Text>test</Text>
+  //       {hint([external], 8 + name.length)}
+  //       {button(external)}
+  //     </Box>
+  //   )
+  // }).catch(($, e, next) => { doError($, e); return next(e) });
 
 
-
-
-
-
-  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
-  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); next(e) });
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
@@ -307,7 +348,7 @@ export const register: Register = on => {
         {beneath}
       </Box>
     )
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   // on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => {
   //   //if (e.requestId !== tool_use_id) return next(e)
@@ -324,7 +365,8 @@ export const register: Register = on => {
   // })
 
   on('session.start', async ($, e, next) => {
-    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`)
+    $.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "transcript" })
+    $.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "debug" })
     await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
     await $.command.register({ name: 'callit', description: 'Call a tool' })
     await $.command.register({ name: 'ask', description: 'Ask Example' })
@@ -348,31 +390,18 @@ export const register: Register = on => {
       await $.ui.open(paneOpenArgs).catch((error) => {
         $.ui.log(`session.start.ERROR: ${error.toString()}`)
       })
-
-      // const paneOpenArgs2: PaneOpenArgs = {
-      //   id: PANE2,
-      //   title: 'Sencha2',
-      //   //rows: 600,
-      //   columns: 300,
-      //   focus: true
-      // }
-      // await $.ui.open(paneOpenArgs2).catch((error) => {
-      //   $.ui.log(`session.start.ERROR: ${error.toString()}`)
-      // })
-
-
     }
     $.clock.after(500, () => { void openWhenSurface() })
 
     const version = await versionString($)
     await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${version}, time: ${new Date().toLocaleString()}` }]);
     return next(e)
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   // on('ui.open', async ($, e, next) => {
   //   $.ui.log(`ui.open: ${await versionString($)} At ${new Date().toLocaleString()}`)
   //   return next(e)
-  // }).catch(($, e, next) => { doError($, e); next(e) });
+  // }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('session.end', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'session.end', message: JSON.stringify(e, null, spaces) }]);
@@ -390,7 +419,7 @@ export const register: Register = on => {
     //timer?.cancel()
     //timer = undefined
     return next(e)
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('command.run', { command: 'ask' }, async ($, e, next) => {
     const tool = `mcp__plugin_sencha_extjs-tools__test-global-set`; const name = 'test-global-set';
@@ -403,7 +432,7 @@ export const register: Register = on => {
     }
     const out = await next(e)
     return { ...out, text: JSON.stringify({ text: 'polling done' }) }
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('command.run', { command: 'sencha' }, async $ => {
     await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
@@ -418,26 +447,26 @@ export const register: Register = on => {
       return { text: 'Sencha pane could not open: no surface is attached' }
     }
     return { text: 'Sencha pane opened' }
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.close', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'ui.close', message: JSON.stringify(e, null, spaces) }]);
     if (e.id !== PANE) return next(e)
     //isPaneOpen = false
     return next(e)
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.press', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
     if (e.plugin !== $.plugin.name || e.requestId !== PANE) return next(e)
     if (e.element === 'close') await $.ui.close({ id: PANE }).catch(() => undefined)
     return next(e)
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   // on('skill.prompt', async ($, e, next) => {
   //   await update($, messages, l => [...l, { title: 'skill.prompt', message: e.skill }])
   //   return next(e)
-  // }).catch(($, e, next) => { doError($, e); next(e) });
+  // }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('prompt.submit', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'prompt.submit', message: JSON.stringify(e, null, spaces) }]);
@@ -446,7 +475,7 @@ export const register: Register = on => {
     //$.ui.toast(`toast: Started At ${startedAt}`)
     //$.ui.log(`log: Started At ${startedAt}`)
     return next(e)
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('turn.start', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'turn.start', message: JSON.stringify(e, null, spaces) }]);
@@ -461,13 +490,14 @@ export const register: Register = on => {
     startedAt = await $.clock.now()
     tools = 0
     return next(e)
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('turn.step', async function* ($, e, next) {
-    await update($, messages, list => [...list, { title: 'turn.step: ', message: `index: ${e.index}, messageCount: ${e.messageCount}` }]);
-    await update($, messages, list => [...list, { title: 'turn.step', message: JSON.stringify(e, null, spaces) }]);
-    for await (const c of next(e)) yield c
-  }) //.catch(($, e, next) => { doError($, e); next(e) });
+    yield* next(e);
+  }).catch(async function* ($, e, next) {
+    doError($, e);
+    yield* next(e);
+  });
 
   on('turn.complete', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify(e, null, spaces) }]);
@@ -479,7 +509,7 @@ export const register: Register = on => {
     const result = await next(e)
     return result;
     //return { ...result, text: `That turn took ${seconds}s` }
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('command.run', { command: 'callit' }, async ($, e, next) => {
     await update($, lines, () => [])
@@ -579,7 +609,20 @@ export const register: Register = on => {
     // })
     // const out = await next(e)
     // return { ...out, text: message }
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
+
+  // on('ui.log', ($, e, next) => {
+  //  //     const { Box, Text } = $.ui.resolve(e)
+  //   // documented rewrite: keep the line off screen (debug log only)
+
+  //   // return (
+  //   //   <Box>
+  //   //     <Text>Hello there</Text>
+  //   //   </Box>
+  //   // )
+
+  //   return next({ ...e, to: "debug" })
+  // })
 
   on('tool.call', async ($, e, next) => {
     // run tool mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd rootPath='/Users/demo/upgrade/run/ext42run
@@ -600,7 +643,8 @@ export const register: Register = on => {
         $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
       })
       out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
-        await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+        //await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+        await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify({ deny: extjsInitializeWithSenchaCmdResult.deny }, null, spaces) }]);
         if (extjsInitializeWithSenchaCmdResult.deny) {
           message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
           stop = true;
@@ -618,8 +662,8 @@ export const register: Register = on => {
         await $.clock.sleep(500)
       }
 
-      $.ui.log(`extjs-initialize-with-sencha-cmd done`)
-      await $.ui.open({ id: PANE, title: 'Sencha 2', focus: true }).catch((error) => {
+      //$.ui.log(`extjs-initialize-with-sencha-cmd done`)
+      await $.ui.open({ id: PANE, title: 'Sencha', focus: true }).catch((error) => {
         $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
       })
 
@@ -795,6 +839,7 @@ export const register: Register = on => {
   //   </Box>
   // )
 
+
   on('ui.render', { component: 'Pane', requestId: PANE2 }, async ($, e) => {
     const linesEntries: { name: string }[] = await read($, lines)
     const { Box, Text, Button } = $.ui.resolve(e)
@@ -815,7 +860,7 @@ export const register: Register = on => {
         }
       </Box>
     )
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
@@ -874,7 +919,7 @@ export const register: Register = on => {
           <Button plain={true} key="close" label="close" onPress={() => { }} />
         </Box>
         <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
-          <Button plain={true} key="pane2" label="pane2" onPress={async () => {
+          <Button plain={true} key="pane2" label="Initialize with Cmd" onPress={async () => {
             await $.ui.open({ id: PANE2, title: 'Initialize with Cmd', focus: true }).catch((error) => {
               $.ui.log(`pane2.ERROR: ${error.toString()}`)
             })
@@ -910,7 +955,7 @@ export const register: Register = on => {
           )
         } */}
 
-        <Box marginTop={2}><Text color="yellow" italic>HISTORY</Text></Box>
+        {/* <Box marginTop={2}><Text color="yellow" italic>HISTORY</Text></Box>
         {
           historyEntries.length === 0 ? (
             <Text dimColor>No history yet.</Text>
@@ -922,7 +967,7 @@ export const register: Register = on => {
               </Text>
             ))
           )
-        }
+        } */}
 
         <Box marginTop={2}><Text color="yellow" italic>TOOL CALLS</Text></Box>
         {
@@ -1013,5 +1058,5 @@ export const register: Register = on => {
         {bottom}
       </Box>
     )
-  }).catch(($, e, next) => { doError($, e); next(e) });
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 }
