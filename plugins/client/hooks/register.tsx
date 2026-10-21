@@ -123,7 +123,7 @@ export const register: Register = (on: On) => {
 
     return (
       <Box flexDirection="column">
-        <Text>top</Text>
+        {/* <Text>top</Text> */}
 
         <Button key="host-toggle-all" onPress={() => {
           if (allExpanded) collapseAll()
@@ -136,12 +136,6 @@ export const register: Register = (on: On) => {
           $.ui.invalidate('ui.render')
         }}>Add Section</Button>
 
-        {/* <Button onPress={() => {
-          addItemToFirstSection()
-          addItemToSecondSection()
-          $.ui.invalidate('ui.render')
-        }}>Add Row</Button> */}
-
         <Button key="host-add-row-latest" onPress={() => {
           addItemToLatestSection()
           $.ui.invalidate('ui.render')
@@ -151,7 +145,7 @@ export const register: Register = (on: On) => {
 
         <Client key="expander" module="./expander.tsx" props={expanderProps() satisfies ExpanderProps} />
 
-        <Text>bottom</Text>
+        {/* <Text>bottom</Text> */}
       </Box>
     )
   }).catch(($, e, next) => { doError($, e); return next(e) });
