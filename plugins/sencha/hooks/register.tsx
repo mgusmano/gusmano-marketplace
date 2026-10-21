@@ -1,25 +1,129 @@
 import type { EngineInterface, Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
 import { atom, read, update } from 'claude-code'
+import { versionString } from './helpers'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
-import type { ButtonProps } from './button'
+import type { ButtonProps } from './components/button'
+import type { ExpanderProps, ExpanderSection } from './components/expander'
+import type { Turn } from './types'
 
+let sections: ExpanderSection[] = [
+  // {
+  //   id: 'log',
+  //   title: 'activity log',
+  //   expanded: false,
+  //   items: [
+  //     { text: 'session.start', color: 'green' },
+  //     'command.register  clienttest',
+  //     'ui.open  Client',
+  //     { text: 'ui.render  Pane', dim: true },
+  //     'ready'
+  //   ],
+  // },
+  // {
+  //   id: 'notes',
+  //   title: 'notes',
+  //   expanded: false,
+  //   items: [
+  //     'first note',
+  //     'second note'
+  //   ]
+  // },
+]
 
-export type Turn = { seconds: number; tools: number }
+// Client props must be plain JsonValue: an own key holding undefined anywhere
+// inside sections makes the engine refuse the whole pane tree ("holds
+// undefined"), so strip such keys and remember where they were.
+const cleanData = (value: any, path: string, dropped: string[]): any => {
+  if (Array.isArray(value)) return value.map((v, i) => cleanData(v, `${path}[${i}]`, dropped))
+  if (value !== null && typeof value === 'object') {
+    const out: any = {}
+    for (const [k, v] of Object.entries(value)) {
+      if (v === undefined) { dropped.push(`${path}.${k}`); continue }
+      out[k] = cleanData(v, `${path}.${k}`, dropped)
+    }
+    return out
+  }
+  return value
+}
 
-const versionString = async ($: EngineInterface): Promise<string> => {
-  try {
-    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as { version?: unknown }
-    return typeof manifest.version === 'string' ? `v${manifest.version}` : 'v?'
-  } catch {
-    return 'v?'
+const expanderProps = (dropped: string[] = []): ExpanderProps => ({
+  sections: cleanData(sections, 'sections', dropped),
+  titleColor: 'cyan',
+  itemColor: 'yellow',
+  hoverBg: '#14532d',
+  unicode: true,
+})
+
+const expandAll = ($: any) => {
+  sections = sections.map(s => ({ ...s, expanded: true }))
+  $.ui.invalidate('ui.render')
+}
+
+const collapseAll = ($: any) => {
+  sections = sections.map(s => ({ ...s, expanded: false }))
+  $.ui.invalidate('ui.render')
+}
+
+const addSection = async ($: any, title?: string, message?: string, step?: Pick<ExpanderSection, 'status' | 'subject'>) => {
+  if (message === undefined) { message = '' }
+  const n = sections.length + 1
+  const previous = sections.length - 1
+  const id = `section-${n}`
+  const section: ExpanderSection = { id, title: title ?? `section ${n}`, message, items: [], expanded: true }
+  if (step?.status !== undefined) section.status = step.status
+  if (step?.subject !== undefined) section.subject = step.subject
+  sections = [
+    ...sections.map((s, i) => (i === previous ? { ...s, expanded: false } : s)),
+    section,
+  ]
+  //await $.clock.sleep(5000)
+  $.ui.invalidate('ui.render')
+
+  return id
+}
+
+const setSectionStatus = ($: any, id: string, status: ExpanderSection['status']) => {
+  //$.ui.log(`setSectionStatus: ${id} ${status}`)
+  sections = sections.map(s => (s.id === id ? { ...s, status } : s))
+  $.ui.invalidate('ui.render')
+}
+
+const addItem = async ($: any, id: string, title?: string) => {
+  sections = sections.map(s => {
+    if (s.id !== id) return s
+    const n = (s.items?.length ?? 0) + 1
+    return { ...s, items: [...(s.items ?? []), title ?? `item ${n}`] }
+  })
+  //await $.clock.sleep(5000)
+  $.ui.invalidate('ui.render')
+
+}
+
+const addItemToLatestSection = async ($: any, title?: string) => {
+  //$.ui.log(`addItemToLatestSection: title-"${title}"`)
+  const latest = sections[sections.length - 1]
+  if (latest) await addItem($, latest.id, title)
+}
+
+const runTests = async ($: any) => {
+  const wait = 200;
+  for (let i = 0; i < 10; i++) {
+    await addSection($, `new section ${i}`)
+    await $.clock.sleep(wait)
+    const count = 5 + Math.floor(Math.random() * 6)
+    for (let j = 0; j < count; j++) {
+      await addItemToLatestSection($, `new item ${j}`)
+      await $.clock.sleep(wait)
+    }
   }
 }
 
+
 const PANE = 'sencha'
 const PANE2 = 'sencha2'
-const PANETEST = 'senchatest'
+//const PANETEST = 'senchatest'
 //let lastPlacement = ''
-const PREFIX = 'mcp__extjs-tools__'
+//const PREFIX = 'mcp__extjs-tools__'
 const spaces = 0
 const LOGO_SVG = 'assets/rapid.svg'
 const LOGO_PNG = 'assets/rapid.png'
@@ -28,51 +132,63 @@ const tail = (p: string, max = 46) => (p.length > max ? '…' + p.slice(-(max - 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
 // Tool output that is not a JSON object yields {} instead of throwing
-const parseObj = (text: string): Record<string, unknown> => {
-  try {
-    const value: unknown = JSON.parse(text)
-    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
-  } catch {
-    return {}
-  }
-}
+// const parseObj = (text: string): Record<string, unknown> => {
+//   try {
+//     const value: unknown = JSON.parse(text)
+//     return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+//   } catch {
+//     return {}
+//   }
+// }
 
 const lines = atom({ plugin: 'sencha', key: 'lines' } as const, [] as { name: string }[])
 const history = atom({ plugin: 'sencha', key: 'history' } as const, [] as Message[])
 // history is append-only, so only entries past the count already shown are added
-const historySeen = new Map<string, number>()
+//const historySeen = new Map<string, number>()
 let linesSeen = 0
 const run = atom({ plugin: 'sencha', key: 'run' } as const, {})
 const steps = atom({ plugin: 'sencha', key: 'steps' } as const, [])
 const messages = atom({ plugin: 'sencha', key: 'messages' } as const, [] as Message[])
+
+// the clear buttons: every atom the pane reads, its line cursor, and the sections
+const clearAll = async ($: any) => {
+  await update($, run, () => ({}))
+  await update($, steps, () => [])
+  await update($, messages, () => [])
+  await update($, history, () => [])
+  await update($, lines, () => [])
+  linesSeen = 0
+  sections = []
+  $.ui.invalidate('ui.render')
+}
 //const last = atom({ plugin: 'turn-band', key: 'last' } as const, null)
 //const isHidden = atom({ plugin: 'turn-band', key: 'isHidden' } as const, false)
 
-// task-start puts the task JSON in block 0; task-get prepends a transcript
-// string and leaves the JSON in a later block, so scan for the one that is a task
-const taskOf = (res: any): Record<string, unknown> => {
-  const blocks = Array.isArray(res?.result) ? res.result : res?.result?.content
-  if (!Array.isArray(blocks)) return {}
-  for (const block of blocks) {
-    if (typeof block?.text !== 'string') continue
-    const parsed = parseObj(block.text)
-    if (typeof parsed.taskId === 'string' || Array.isArray(parsed.history)) return parsed
-  }
-  return {}
-}
+// // task-start puts the task JSON in block 0; task-get prepends a transcript
+// // string and leaves the JSON in a later block, so scan for the one that is a task
+// const taskOf = (res: any): Record<string, unknown> => {
+//   const blocks = Array.isArray(res?.result) ? res.result : res?.result?.content
+//   if (!Array.isArray(blocks)) return {}
+//   for (const block of blocks) {
+//     if (typeof block?.text !== 'string') continue
+//     const parsed = parseObj(block.text)
+//     if (typeof parsed.taskId === 'string' || Array.isArray(parsed.history)) return parsed
+//   }
+//   return {}
+// }
 
-// append only the history entries not shown yet, oldest first
-const appendHistory = async ($: EngineInterface, task: Record<string, unknown>): Promise<number> => {
-  const id = str(task.taskId)
-  if (id === undefined) return 0
-  const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
-  const name = str(task.taskName)
-  const seen = historySeen.get(id) ?? 0
-  const fresh = entries.slice(seen).map(entry => ({ name, title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
-  historySeen.set(id, entries.length)
-  if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
-  return fresh.length
-}
+// // append only the history entries not shown yet, oldest first
+// const appendHistory = async ($: EngineInterface, task: Record<string, unknown>): Promise<number> => {
+//   const id = str(task.taskId)
+//   if (id === undefined) return 0
+//   const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
+//   const name = str(task.taskName)
+//   const seen = historySeen.get(id) ?? 0
+//   const fresh = entries.slice(seen).map(entry => ({ name, title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
+//   historySeen.set(id, entries.length)
+//   if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
+//   return fresh.length
+// }
 
 // collapse consecutive equal items into one run: first and last item, and how many
 const runsOf = <T,>(items: T[], same: (a: T, b: T) => boolean): { first: T; last: T; count: number }[] => {
@@ -94,8 +210,12 @@ const appendLines = async ($: EngineInterface, items: { name?: string }[]): Prom
   const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined ? [] : [{ name: item.name }])
   linesSeen = items.length
   if (fresh.length > 0) {
-    await update($, lines, list => [...list, ...fresh])
-    await $.ui.scroll({ in: PANE2, to: 'end' })
+    for (const item of fresh) {
+      await addItemToLatestSection($, item.name)
+    }
+    //await update($, lines, list => [...list, ...fresh])
+    await $.ui.scroll({ in: PANE, to: 'end' })
+    //await $.ui.scroll({ in: PANE2, to: 'end' })
   }
   return fresh.length
 }
@@ -209,7 +329,7 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
         <Box marginLeft={0.5} alignItems="flex-start">
           <Box flexDirection="row" alignItems="flex-start">
             <Box width={8} flexShrink={0} marginTop={0.04}>
-              <Text color="cyan" weight="bold" italic>{label}:</Text>
+              <Text color="cyan" bold italic>{label}:</Text>
             </Box>
             {!showNext && <Text color="rgb(145,186,76)" bold>{text}</Text>}
           </Box>
@@ -234,16 +354,18 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
   return (
     <Box flexDirection="row" alignItems="flex-start" >
       <Box marginTop={1} width={12} flexShrink={0} >
-        {img} <Text color="cyan" weight="bold" italic={true}>{label}: </Text>
+        {img} <Text color="cyan" bold={true} italic={true}>{label}: </Text>
       </Box>
-      {!showNext && <Box marginTop={1}><Text color="rgb(145,186,76)" weight="regular">{text}</Text></Box>}
+      {!showNext && <Box marginTop={1}><Text color="rgb(145,186,76)">{text}</Text></Box>}
       {showNext && beneath}
     </Box>
   )
 }
 
-const doError = ($: any, e: any) => {
-  $.ui.log(`error: ${JSON.stringify(e)}`)
+const doError = ($: any, e: any, next?: { error?: { kind?: string; message?: string } }) => {
+  const f = next?.error
+  const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
+  $.ui.log(`error${why}: ${JSON.stringify(e)}`)
 }
 
 export const register: Register = on => {
@@ -256,7 +378,7 @@ export const register: Register = on => {
   let taskId: string | undefined
   // tasks the pane polls itself, and a guard so those polls skip the bookkeeping below
   const polling = new Set<string>()
-  let internalToolCall = false
+  //let internalToolCall = false
 
   //.catch(($, e, next) => next(e))
 
@@ -365,8 +487,9 @@ export const register: Register = on => {
   // })
 
   on('session.start', async ($, e, next) => {
-    $.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "transcript" })
-    $.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "debug" })
+    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "transcript" })
+    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "debug" })
+
     await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
     await $.command.register({ name: 'callit', description: 'Call a tool' })
     await $.command.register({ name: 'ask', description: 'Ask Example' })
@@ -394,7 +517,8 @@ export const register: Register = on => {
     $.clock.after(500, () => { void openWhenSurface() })
 
     const version = await versionString($)
-    await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${version}, time: ${new Date().toLocaleString()}` }]);
+    //await update($, messages, list => [...list, { title: 'session.start: ', message: `version: ${version}, time: ${new Date().toLocaleString()}` }]);
+    await addSection($, 'session.start', `${await versionString($)} At ${new Date().toLocaleString()}`)
     return next(e)
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
@@ -435,7 +559,9 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('command.run', { command: 'sencha' }, async $ => {
-    await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
+    //await update($, messages, list => [...list, { title: 'command.run', message: `command 'sencha' executed.` }]);
+    const message = `command 'sencha' executed.`
+    await addSection($, 'command.run', message)
     // No surface attached (bare -p run): ui.open may never settle, so check first
     if ((await $.session.surfaces()).length === 0) {
       return { text: 'Sencha pane could not open: no surface is attached' }
@@ -450,14 +576,17 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.close', async ($, e, next) => {
-    await update($, messages, list => [...list, { title: 'ui.close', message: JSON.stringify(e, null, spaces) }]);
+    //await update($, messages, list => [...list, { title: 'ui.close', message: JSON.stringify(e, null, spaces) }]);
+    const message = JSON.stringify(e, null, spaces)
+    await addSection($, 'ui.close', message)
+
     if (e.id !== PANE) return next(e)
     //isPaneOpen = false
     return next(e)
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.press', async ($, e, next) => {
-    await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
+    //await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
     if (e.plugin !== $.plugin.name || e.requestId !== PANE) return next(e)
     if (e.element === 'close') await $.ui.close({ id: PANE }).catch(() => undefined)
     return next(e)
@@ -470,7 +599,11 @@ export const register: Register = on => {
 
   on('prompt.submit', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'prompt.submit', message: JSON.stringify(e, null, spaces) }]);
-    await update($, messages, list => [...list, { title: 'prompt.submit: ', message: e.text }]);
+
+    //await update($, messages, list => [...list, { title: 'prompt.submit: ', message: e.text }]);
+    await addSection($, 'prompt.submit', e.text)
+    //await addItemToLatestSection($, await versionString($))
+
     //$.ui.status(`status: Started At ${startedAt}`)
     //$.ui.toast(`toast: Started At ${startedAt}`)
     //$.ui.log(`log: Started At ${startedAt}`)
@@ -485,8 +618,13 @@ export const register: Register = on => {
     const inner = hasCommandMessage ? e.text.slice(begin + 17, end).trim() : ''
     isExtjsPrompt = inner.startsWith('extjs')
     isReExtPrompt = inner.startsWith('reext')
+
     //await update($, messages, list => [...list, { title: 'turn.start: ', message: `hasCommandMessage: ${String(hasCommandMessage)} · isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)} · commandMessage: ${JSON.stringify(inner.slice(0, 60))}` }]);
-    await update($, messages, list => [...list, { title: 'turn.start: ', message: `hasCommandMessage: ${String(hasCommandMessage)} · isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)} · commandMessage: ${inner.slice(0, 60)}` }]);
+    const message = `hasCommandMessage: ${String(hasCommandMessage)} · isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)} · commandMessage: ${inner.slice(0, 60)}`
+    //await update($, messages, list => [...list, { title: 'turn.start: ', message: message }]);
+    await addSection($, 'turn.start', message)
+    //await addItemToLatestSection($, await versionString($))
+
     startedAt = await $.clock.now()
     tools = 0
     return next(e)
@@ -495,7 +633,7 @@ export const register: Register = on => {
   on('turn.step', async function* ($, e, next) {
     yield* next(e);
   }).catch(async function* ($, e, next) {
-    doError($, e);
+    doError($, e, next);
     yield* next(e);
   });
 
@@ -505,7 +643,12 @@ export const register: Register = on => {
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const turn: Turn = { seconds, tools }
     //await update($, messages, list => [...list, { title: 'turn.complete', message: JSON.stringify({ usage: e.usage, seconds, tools }, null, spaces) }]);
-    await update($, messages, list => [...list, { title: 'turn.complete: ', message: `time: ${dur}` }]);
+    const message = `time: ${dur}`;
+    //await update($, messages, list => [...list, { title: 'turn.complete: ', message: message }]);
+    await addSection($, 'turn.complete', message)
+    //await addItemToLatestSection($, await versionString($))
+
+
     const result = await next(e)
     return result;
     //return { ...result, text: `That turn took ${seconds}s` }
@@ -526,9 +669,10 @@ export const register: Register = on => {
 
     const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
     const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42runClaude' }
+    //await addSection($, 'extjs-initialize-with-sencha-cmd')
     out = $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
       //out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
-      await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+      //await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
       if (extjsInitializeWithSenchaCmdResult.deny) {
         message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
         stop = true;
@@ -629,22 +773,35 @@ export const register: Register = on => {
     let stop = false;
     let message = 'done';
     let out: any;
-    await update($, messages, list => [...list, { title: 'tool.call', message: e.tool }]);
+
+    const message2 = ' '
+    //await update($, messages, list => [...list, { title: 'tool.call', message: message2 }]);
+    //await addItemToLatestSection($, await versionString($))
+
     //await update($, messages, list => [...list, { title: 'tool.call', message: JSON.stringify(e, null, spaces) }]);
     //await update($, messages, list => [...list, { title: 'tool.call', message: tool_use_id }]);
     //if (!e.tool.startsWith(PREFIX)) return next(e)
     const id = e.tool_use_id ?? `${e.tool}-${Math.random()}`
     const tool = e.tool.slice(e.tool.lastIndexOf('_') + 1)
     const subject = subjectOf(e)
-    await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
+    //const sectionId = await addSection($, tool, message2, { status: 'runs', subject })
+    const sectionId = await addSection($, 'tool.call', tool + message2, { status: 'runs', subject })
+    //await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
 
     if (e.tool === 'mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd') {
-      await $.ui.open({ id: PANE2, title: 'extjs-initialize-with-sencha-cmd', focus: true }).catch((error) => {
-        $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
-      })
+      // await $.ui.open({ id: PANE2, title: 'extjs-initialize-with-sencha-cmd', focus: true }).catch((error) => {
+      //   $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
+      // })
+
+      //await addSection($, 'Aextjs-initialize-with-sencha-cmd')
+
       out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
         //await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
-        await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify({ deny: extjsInitializeWithSenchaCmdResult.deny }, null, spaces) }]);
+        const message3 = JSON.stringify({ deny: extjsInitializeWithSenchaCmdResult.deny }, null, spaces)
+        //await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: message3 }]);
+        //await addSection($, 'extjsInitializeWithSenchaCmdResult', message3)
+        //await addItemToLatestSection($, await versionString($))
+
         if (extjsInitializeWithSenchaCmdResult.deny) {
           message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
           stop = true;
@@ -663,9 +820,9 @@ export const register: Register = on => {
       }
 
       //$.ui.log(`extjs-initialize-with-sencha-cmd done`)
-      await $.ui.open({ id: PANE, title: 'Sencha', focus: true }).catch((error) => {
-        $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
-      })
+      // await $.ui.open({ id: PANE, title: 'Sencha', focus: true }).catch((error) => {
+      //   $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
+      // })
 
     }
     else {
@@ -682,7 +839,9 @@ export const register: Register = on => {
     //   await $.clock.sleep(500)
     // }
 
-    await update($, steps, list => list.map(s => (s.id === id ? { ...s, status: 'done' as const } : s)))
+    const failed = out != null && typeof out.then !== 'function' && (out.isError === true || out.deny !== undefined)
+    await update($, steps, list => list.map(s => (s.id === id ? { ...s, status: failed ? 'fail' as const : 'done' as const } : s)))
+    setSectionStatus($, sectionId, failed ? 'fail' : 'done')
     return out;
     //return { ...out, text: message }
 
@@ -840,30 +999,150 @@ export const register: Register = on => {
   // )
 
 
-  on('ui.render', { component: 'Pane', requestId: PANE2 }, async ($, e) => {
-    const linesEntries: { name: string }[] = await read($, lines)
-    const { Box, Text, Button } = $.ui.resolve(e)
-    return (
-      <Box flexDirection="column">
+  // on('ui.render', { component: 'Pane', requestId: PANE2 }, async ($, e) => {
+  //   const linesEntries: { name: string }[] = await read($, lines)
+  //   const { Box, Text, Button } = $.ui.resolve(e)
+  //   return (
+  //     <Box flexDirection="column">
 
-        <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
-        {
-          linesEntries.length === 0 ? (
-            <Text dimColor>No lines yet.</Text>
-          ) : (
-            linesEntries.map((l, i) => (
-              <Text key={`line${i}`}>
-                <Text color="cyan">{l.name}</Text>
-              </Text>
-            ))
-          )
-        }
-      </Box>
-    )
+  //       <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
+  //       {
+  //         linesEntries.length === 0 ? (
+  //           <Text dimColor>No lines yet.</Text>
+  //         ) : (
+  //           linesEntries.map((l, i) => (
+  //             <Text key={`line${i}`}>
+  //               <Text color="cyan">{l.name}</Text>
+  //             </Text>
+  //           ))
+  //         )
+  //       }
+  //     </Box>
+  //   )
+  // }).catch(($, e, next) => { doError($, e); return next(e) });
+
+  on('ui.message', async ($, e, next) => {
+    if (e.element === 'header-test') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Test: runs ten rounds of add section / add item')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        void runTests($).catch(err => doError($, err))
+      }
+      return {}
+    }
+    if (e.element === 'clear-top' || e.element === 'clear-bottom') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Clear: empties the pane data and the expander sections')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        void clearAll($).catch(err => doError($, err))
+      }
+      return {}
+    }
+    if (e.element === 'close-top' || e.element === 'close-bottom') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Close: closes the pane')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        await $.ui.close({ id: PANE }).catch(() => undefined)
+      }
+      return {}
+    }
+    if (e.element === 'toggle-all') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Expand All / Collapse All: toggles every section')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        const all = sections.length > 0 && sections.every(s => s.expanded)
+        if (all) collapseAll($)
+        else expandAll($)
+      }
+      return {}
+    }
+    if (e.element === 'add-section') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Add Section: appends a new section and focuses it')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        await addSection($)
+      }
+      return {}
+    }
+    if (e.element === 'add-item-latest') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Add Item to Latest Section: appends an item to the last section')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        await addItemToLatestSection($)
+      }
+      return {}
+    }
+    if (e.element === 'run-test') {
+      const data = e.data as { press?: boolean; over?: boolean }
+      if (data?.over === true) {
+        $.ui.status('Test: runs ten rounds of add section / add item')
+      }
+      if (data?.over === false) {
+        $.ui.status(undefined)
+      }
+      if (data?.press === true) {
+        void runTests($).catch(err => doError($, err))
+      }
+      return {}
+    }
+    if (e.element === 'expander') {
+      const data = e.data as {
+        toggle?: { section: string; open: boolean }
+        addRow?: { section: string }
+        addSection?: boolean
+        press?: { section: string; index: number }
+      }
+      if (data?.toggle) {
+        const { section, open } = data.toggle
+        sections = sections.map(s => (s.id === section ? { ...s, expanded: open } : s))
+        return { props: expanderProps() }
+      }
+      if (data?.addRow) {
+        addItem($, data.addRow.section)
+        return { props: expanderProps() }
+      }
+      if (data?.addSection) {
+        await addSection($)
+        return { props: expanderProps() }
+      }
+    }
+    return next(e)
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    const { Box, Text } = $.ui.resolve(e)
     // // Log placement only when it changes, not on every render
     // const placement = (e.props as { placement?: string }).placement ?? 'unknown'
     // //if (placement !== lastPlacement) {
@@ -902,30 +1181,23 @@ export const register: Register = on => {
     let version =
       <Text color="cyan" italic>{await versionString($)}</Text>
 
-    let buttons =
+    const buttons = (Client: any) => (
       <Box flexDirection="row" marginTop={1}>
-        <Box borderStyle='single' marginLeft={0} paddingX={1} paddingY={0}>
-          <Button plain={true} key="clear" label="clear" onPress={async () => {
-            //$.ui.log(`clear: At ${new Date().toLocaleString()}`)
-            await update($, run, () => ({}))
-            await update($, steps, () => [])
-            await update($, messages, () => [])
-            await update($, history, () => [])
-            await update($, lines, () => [])
-            linesSeen = 0
-          }}></Button>
+        <Box marginRight={1}>
+          <Client key="clear-top" module="./button.tsx" props={{ id: 'clear-top', label: 'clear', dim: false } satisfies ButtonProps} />
         </Box>
-        <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
-          <Button plain={true} key="close" label="close" onPress={() => { }} />
+        <Box marginRight={1}>
+          <Client key="close-top" module="./button.tsx" props={{ id: 'close-top', label: 'close', dim: false } satisfies ButtonProps} />
         </Box>
-        <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
+        {/* <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
           <Button plain={true} key="pane2" label="Initialize with Cmd" onPress={async () => {
             await $.ui.open({ id: PANE2, title: 'Initialize with Cmd', focus: true }).catch((error) => {
               $.ui.log(`pane2.ERROR: ${error.toString()}`)
             })
           }} />
-        </Box>
-      </Box>;
+        </Box> */}
+      </Box>
+    )
 
     // one row per run of identical tool calls and steps
     const listRuns = runsOf(list, (a, b) => a.tool === b.tool && a.subject === b.subject)
@@ -976,18 +1248,24 @@ export const register: Register = on => {
           ) : (
             listRuns.map(run => {
               const s = run.last
+              const statusColor = s.status === 'fail' ? 'error' : s.status === 'done' ? 'success' : 'warning'
               return (
                 <Box key={run.first.id} flexDirection="row" alignItems="flex-start">
                   <Box width={2} flexShrink={0}>
-                    <Text color={s.status === 'fail' ? 'error' : s.status === 'done' ? 'success' : 'warning'}>
+                    <Text color={statusColor}>
                       {s.status === 'runs' ? '•' : s.status === 'done' ? '✓' : '✗'}
                     </Text>
                   </Box>
-                  <Text color={s.status === 'fail' ? 'error' : s.status === 'done' ? 'success' : 'warning'}>
-                    {s.tool}
-                    {run.count > 1 ? <Text dimColor>{` (${run.count})`}</Text> : null}
-                    {s.subject ? <Text dimColor>{` · ${tail(s.subject, 1280)}`}</Text> : null}
-                  </Text>
+                  <Box width={10} flexShrink={0}>
+                    <Text color="cyan" wrap="truncate">tool call</Text>
+                  </Box>
+                  <Box width={34} flexShrink={0}>
+                    <Text color={statusColor} wrap="truncate">
+                      {s.tool}
+                      {run.count > 1 ? <Text dimColor>{` (${run.count})`}</Text> : null}
+                    </Text>
+                  </Box>
+                  {s.subject ? <Text color={statusColor} dimColor wrap="truncate">{` · ${tail(s.subject, 1280)}`}</Text> : null}
                 </Box>
               )
             })
@@ -1009,26 +1287,25 @@ export const register: Register = on => {
         }
       </Box>;
 
-    let bottom =
+    const bottom = (Client: any) => (
       <Box flexDirection="row" marginTop={1}>
-        <Box borderStyle='single' marginLeft={0} paddingX={1} paddingY={0}>
-          <Button plain={true} key="clear" label="clear" onPress={async () => {
-            //$.ui.log(`clear: At ${new Date().toLocaleString()}`)
-            await update($, run, () => ({}))
-            await update($, steps, () => [])
-            await update($, messages, () => [])
-            await update($, history, () => [])
-            await update($, lines, () => [])
-            linesSeen = 0
-          }}></Button>
+        <Box marginRight={1}>
+          <Client key="clear-bottom" module="./button.tsx" props={{ id: 'clear-bottom', label: 'clear', dim: false } satisfies ButtonProps} />
         </Box>
-        <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
-          <Button plain={true} key="close" label="close" onPress={() => { }} />
+        <Box marginRight={1}>
+          <Client key="close-bottom" module="./button.tsx" props={{ id: 'close-bottom', label: 'close', dim: false } satisfies ButtonProps} />
         </Box>
-      </Box>;
+      </Box>
+    )
 
-    if (e.surface !== 'terminal') {
-      const { Box, Text, Svg } = $.ui.resolve(e)
+    //if (e.surface !== 'terminal' && e.surface !== 'vscode' && e.surface !== 'mobile') {
+    if (e.surface === 'desktop') {
+      const { Box, Text, Svg, Client } = $.ui.resolve(e)
+      const allExpanded = sections.length > 0 && sections.every(s => s.expanded)
+      const dropped: string[] = []
+      const expander = expanderProps(dropped)
+      if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
+
       return (
         <Box flexDirection="column">
           <Box flexDirection="row">
@@ -1036,27 +1313,60 @@ export const register: Register = on => {
             <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
             <Box marginLeft={2}>{version}</Box>
             <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
+            <Box marginLeft={2}><Client key="header-test" module="./button.tsx" props={{ id: 'header-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
           </Box>
-          {buttons}
+          {buttons(Client)}
           {body}
-          {bottom}
+
+
+
+          <Box marginTop={1} marginBottom={1}>
+            <Box marginRight={1}><Client key="toggle-all" module="./button.tsx" props={{ id: 'toggle-all', label: allExpanded ? 'Collapse All' : 'Expand All', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginRight={1}><Client key="add-section" module="./button.tsx" props={{ id: 'add-section', label: 'Add Section', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginRight={1}><Client key="add-item-latest" module="./button.tsx" props={{ id: 'add-item-latest', label: 'Add Item to Latest Section', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginRight={1}><Client key="run-test" module="./button.tsx" props={{ id: 'run-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
+          </Box>
+          {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
+          <Client key="expander" module="./expander.tsx" props={expander satisfies ExpanderProps} />
+
+
+
+          {bottom(Client)}
         </Box>
       )
     }
 
     // terminal surface
-    const { Image } = $.ui.resolve(e)
-    return (
-      <Box flexDirection="column">
-        <Box flexDirection="row">
-          <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
-          <Box marginLeft={2}>{version}</Box>
-          <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
+    if (e.surface === 'terminal') {
+      const { Image, Text, Client } = $.ui.resolve(e)
+      const dropped: string[] = []
+      const expander = expanderProps(dropped)
+      if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
+      return (
+        <Box flexDirection="column">
+          <Box flexDirection="row">
+            <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
+            <Box marginLeft={2}>{version}</Box>
+            <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
+            <Box marginLeft={2}><Client key="header-test" module="./button.tsx" props={{ id: 'header-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
+          </Box>
+          {buttons(Client)}
+          {body}
+          {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
+          <Client key="expander" module="./expander.tsx" props={expander satisfies ExpanderProps} />
+          {bottom(Client)}
         </Box>
-        {buttons}
-        {body}
-        {bottom}
-      </Box>
-    )
+      )
+    }
+
+    if (e.surface === 'vscode') {
+      return (<Text>vscode</Text>)
+    }
+
+    if (e.surface === 'mobile') {
+      return (<Text>mobile</Text>)
+    }
+
+    return next(e)
   }).catch(($, e, next) => { doError($, e); return next(e) });
 }

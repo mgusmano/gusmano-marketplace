@@ -2,12 +2,10 @@ import type { EngineInterface, Frozen, Next, On, Register, SessionStartInput, Pa
 import type { ExpanderProps, ExpanderSection } from './expander'
 
 const PANE = 'client'
-const expanderProps = (): ExpanderProps => ({
-  sections,
-  itemColor: 'yellow',
-  hoverBg: '#14532d',
-  unicode: true,
-})
+const doError = ($: any, e: any) => {
+  $.ui.log(`error: ${JSON.stringify(e)}`)
+}
+
 let sections: ExpanderSection[] = [
   {
     id: 'log',
@@ -31,10 +29,12 @@ let sections: ExpanderSection[] = [
     ]
   },
 ]
-
-const doError = ($: any, e: any) => {
-  $.ui.log(`error: ${JSON.stringify(e)}`)
-}
+const expanderProps = (): ExpanderProps => ({
+  sections,
+  itemColor: 'yellow',
+  hoverBg: '#14532d',
+  unicode: true,
+})
 
 const expandAll = ($: any) => {
   sections = sections.map(s => ({ ...s, expanded: true }))
