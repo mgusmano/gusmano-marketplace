@@ -53,14 +53,17 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'client', surface, component: 'Pane', requestId: 'client', props: paneProps(60) })
     await clock.settle()
     expect(await expanderOf(ui)).not.toContain('item 3')
-    // the host button adds a row to the latest section (notes, which is expanded)
+    // the host button adds a row to the latest section (notes, collapsed at
+    // start: title row 1 sits under the collapsed activity log)
     await ui.press({ key: 'host-add-row-latest' })
+    await clock.settle()
+    await clickTitle(ui, 1)
     await clock.settle()
     expect(await expanderOf(ui)).toContain('item 3')
     // the row survives collapsing and re-expanding its section
-    await clickTitle(ui, 0)
+    await clickTitle(ui, 1)
     await clock.settle()
-    await clickTitle(ui, 0)
+    await clickTitle(ui, 1)
     await clock.settle()
     expect(await expanderOf(ui)).toContain('item 3')
     await ui.unmount()
@@ -75,7 +78,10 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const before = await expanderOf(ui)
     expect(before).toContain('activity log')
     expect(before).toContain('notes')
-    expect(before).toContain('first note')
+    // both start collapsed; notes' rows show after expanding its title (row 1)
+    await clickTitle(ui, 1)
+    await clock.settle()
+    expect(await expanderOf(ui)).toContain('first note')
     // the host button adds a section; the previous last one collapses
     await ui.press({ key: 'host-add-section' })
     await clock.settle()
@@ -135,6 +141,27 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(collapsed).toContain('notes')
     expect(collapsed).not.toContain('session.start')
     expect(collapsed).not.toContain('first note')
+    await ui.unmount()
+  })
+
+  test(`expander test button makes ten sections of 5-10 rows (${surface})`, { timeoutMs: 20_000 }, async ($, on) => {
+    const clock = world(on)
+    await $.session.start({ cwd: '/tmp', surface, isInteractive: true })
+    await clock.settle()
+    const ui = await $.ui.mount({ plugin: 'client', surface, component: 'Pane', requestId: 'client', props: paneProps(60) })
+    await clock.settle()
+    await ui.press({ key: 'host-test' })
+    // ten rounds, each a section plus 5-10 rows, a clock second apart
+    for (let i = 0; i < 130; i++) await clock.advance(1000)
+    await clock.settle()
+    const drawn = await expanderOf(ui)
+    // seeds are section 1 and 2, so ten rounds end at section 12
+    expect(drawn).toContain('section 3')
+    expect(drawn).toContain('section 12')
+    const rows = drawn.match(/item \d+/g) ?? []
+    // each round collapsed the section before it, so only the last one's rows draw
+    expect(rows.length).toBeGreaterThanOrEqual(5)
+    expect(rows.length).toBeLessThanOrEqual(10)
     await ui.unmount()
   })
 
