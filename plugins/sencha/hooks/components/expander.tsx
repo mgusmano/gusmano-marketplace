@@ -46,8 +46,8 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
     surface.setState(state)
   }
   const cur = () => surface.state ?? state
-  const caretOpen = props.unicode ? '▾' : CHEVRON_OPEN
-  const caretClosed = props.unicode ? '▸' : CHEVRON_CLOSED
+  const caretOpen = props.unicode ? '▼' : CHEVRON_OPEN
+  const caretClosed = props.unicode ? '▶' : CHEVRON_CLOSED
   const cap = Math.max(1, Math.min(props.max ?? Infinity, 500))
 
   const sectionOf = (id: string) => props.sections.find(s => s.id === id)
@@ -179,11 +179,8 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
             <Box width={15} flexShrink={0}>
               <Text color={titleColor} wrap="truncate">{` ${sec.expanded ? caretOpen : caretClosed} ${sec.title}`}</Text>
             </Box>
-            {right
-              ? <Text color={titleColor} dimColor wrap="truncate">{right}</Text>
-              : sec.message
-                ? <Text color="white">{`${sec.message}`}</Text>
-                : null}
+            {sec.message ? <Text color="white">{`${sec.message}`}</Text> : null}
+            {right ? <Text color={titleColor} dimColor wrap="truncate">{right}</Text> : null}
             <Box flexGrow={1} />
           </Box>
           {shown.map((it, i) => (

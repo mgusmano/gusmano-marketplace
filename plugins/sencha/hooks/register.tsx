@@ -1,38 +1,27 @@
 import type { EngineInterface, Hook, Register, RenderInput, ToolCallInput, PaneOpenArgs } from 'claude-code'
 import { atom, read, update } from 'claude-code'
-import { versionString } from './helpers'
 import type { UpgradeRun, UpgradeStep, Message } from '../types'
 import type { ButtonProps } from './components/button'
 import type { ExpanderProps, ExpanderSection } from './components/expander'
 import type { Turn } from './types'
 
-let sections: ExpanderSection[] = [
-  // {
-  //   id: 'log',
-  //   title: 'activity log',
-  //   expanded: false,
-  //   items: [
-  //     { text: 'session.start', color: 'green' },
-  //     'command.register  clienttest',
-  //     'ui.open  Client',
-  //     { text: 'ui.render  Pane', dim: true },
-  //     'ready'
-  //   ],
-  // },
-  // {
-  //   id: 'notes',
-  //   title: 'notes',
-  //   expanded: false,
-  //   items: [
-  //     'first note',
-  //     'second note'
-  //   ]
-  // },
-]
+let sections: ExpanderSection[] = []
 
-// Client props must be plain JsonValue: an own key holding undefined anywhere
-// inside sections makes the engine refuse the whole pane tree ("holds
-// undefined"), so strip such keys and remember where they were.
+export const versionString = async ($: EngineInterface): Promise<string> => {
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as { version?: unknown }
+    return typeof manifest.version === 'string' ? `v${manifest.version}` : 'v?'
+  } catch {
+    return 'v?'
+  }
+}
+
+export const doError = ($: any, e: any, next?: { error?: { kind?: string; message?: string } }) => {
+  const f = next?.error
+  const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
+  $.ui.log(`error${why}: ${JSON.stringify(e)}`)
+}
+
 const cleanData = (value: any, path: string, dropped: string[]): any => {
   if (Array.isArray(value)) return value.map((v, i) => cleanData(v, `${path}[${i}]`, dropped))
   if (value !== null && typeof value === 'object') {
@@ -106,7 +95,7 @@ const addItemToLatestSection = async ($: any, title?: string) => {
 }
 
 const runTests = async ($: any) => {
-  const wait = 200;
+  const wait = 50;
   for (let i = 0; i < 10; i++) {
     await addSection($, `new section ${i}`)
     await $.clock.sleep(wait)
@@ -161,36 +150,7 @@ const clearAll = async ($: any) => {
   sections = []
   $.ui.invalidate('ui.render')
 }
-//const last = atom({ plugin: 'turn-band', key: 'last' } as const, null)
-//const isHidden = atom({ plugin: 'turn-band', key: 'isHidden' } as const, false)
 
-// // task-start puts the task JSON in block 0; task-get prepends a transcript
-// // string and leaves the JSON in a later block, so scan for the one that is a task
-// const taskOf = (res: any): Record<string, unknown> => {
-//   const blocks = Array.isArray(res?.result) ? res.result : res?.result?.content
-//   if (!Array.isArray(blocks)) return {}
-//   for (const block of blocks) {
-//     if (typeof block?.text !== 'string') continue
-//     const parsed = parseObj(block.text)
-//     if (typeof parsed.taskId === 'string' || Array.isArray(parsed.history)) return parsed
-//   }
-//   return {}
-// }
-
-// // append only the history entries not shown yet, oldest first
-// const appendHistory = async ($: EngineInterface, task: Record<string, unknown>): Promise<number> => {
-//   const id = str(task.taskId)
-//   if (id === undefined) return 0
-//   const entries = (Array.isArray(task.history) ? task.history : []) as { status?: unknown; message?: unknown }[]
-//   const name = str(task.taskName)
-//   const seen = historySeen.get(id) ?? 0
-//   const fresh = entries.slice(seen).map(entry => ({ name, title: str(entry.status) ?? 'task', message: str(entry.message) ?? '' }))
-//   historySeen.set(id, entries.length)
-//   if (fresh.length > 0) await update($, history, list => [...list, ...fresh])
-//   return fresh.length
-// }
-
-// collapse consecutive equal items into one run: first and last item, and how many
 const runsOf = <T,>(items: T[], same: (a: T, b: T) => boolean): { first: T; last: T; count: number }[] => {
   const runs: { first: T; last: T; count: number }[] = []
   for (const item of items) {
@@ -362,134 +322,20 @@ const renderMessage = async ($: Parameters<Hook<'ui.render'>>[0], e: RenderInput
   )
 }
 
-const doError = ($: any, e: any, next?: { error?: { kind?: string; message?: string } }) => {
-  const f = next?.error
-  const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
-  $.ui.log(`error${why}: ${JSON.stringify(e)}`)
-}
+// const doError = ($: any, e: any, next?: { error?: { kind?: string; message?: string } }) => {
+//   const f = next?.error
+//   const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
+//   $.ui.log(`error${why}: ${JSON.stringify(e)}`)
+// }
 
 export const register: Register = on => {
-  let tool_use_id = ''
   let startedAt = 0
   let tools = 0
   let hasCommandMessage = false
   let isExtjsPrompt = false
   let isReExtPrompt = false
-  let taskId: string | undefined
-  // tasks the pane polls itself, and a guard so those polls skip the bookkeeping below
-  const polling = new Set<string>()
-  //let internalToolCall = false
-
-  //.catch(($, e, next) => next(e))
-
-  // on('tool.call', async ($, e, next) => {
-  //   const out = await next(e)
-  //   return out;
-  // }).catch(($, e, next) => next(e))
-
-  // on('command.run', { command: 'test' }, async ($, e, next) => {
-  //   const paneOpenArgs: PaneOpenArgs = {
-  //     id: PANETEST,
-  //     title: 'Test',
-  //     //rows: 600,
-  //     columns: 100,
-  //     focus: true
-  //   }
-  //   await $.ui.open(paneOpenArgs).catch((error) => {
-  //     $.ui.log(`PANETEST.ERROR: ${error.toString()}`)
-  //   })
-  //   const out = await next(e)
-  //   return { ...out, text: JSON.stringify({ text: JSON.stringify(e) }) }
-  // }).catch(($, e, next) => { doError($, e); return next(e) });
-
-  // on('ui.render', { component: 'Pane', requestId: PANETEST }, async ($, e, next) => {
-  //   if (e.surface !== 'terminal' && e.surface !== 'desktop') return next(e)
-  //   const { Box, Text, Button, Client } = $.ui.resolve(e)
-  //   const button = (b: ButtonProps) => <Client key={`button-${b.id}`} module="./button.tsx" props={{ id: b.id, label: b.label, dim: b.dim } satisfies ButtonProps} />
-  //   let glyphSetting = 'auto'
-  //   let noNerd = false
-  //   const unicode = glyphSetting === 'plain' || (glyphSetting === 'auto' && (noNerd || e.surface === 'desktop'))
-  //   const external = { id: 'external', label: unicode ? '↗' : '\u{f08e}', dim: true, hint: 'open in default app' }
-
-  //   const name = "marc"
-  //   const hint = (buttons: { id: string; hint: string }[], title: number) => {
-  //     //const text = buttons.find(b => b.id === hovered)?.hint
-  //     const text = 'the hint'
-  //     if (!text) return null
-  //     const room = e.props.bodyColumns - title - buttons.length * (e.surface === 'desktop' ? 3 : 2) - 2
-  //     //eturn text.length <= room ? <Text color={theme.muted}>{`${text} `}</Text> : null
-  //     return text.length <= room ? <Text color='cyan'>{`${text} `}</Text> : null
-  //   }
-
-  //   return (
-  //     <Box flexDirection="row">
-  //       <Text>test</Text>
-  //       {hint([external], 8 + name.length)}
-  //       {button(external)}
-  //     </Box>
-  //   )
-  // }).catch(($, e, next) => { doError($, e); return next(e) });
-
-
-  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
-
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const { Box, Text } = $.ui.resolve(e)
-
-    let img
-    if (e.surface === 'terminal') {
-      const { Image } = $.ui.resolve(e)
-      img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
-    }
-
-    const beneath = await next(e)
-    return (
-      <Box flexDirection="column" marginTop={1}>
-
-        <Box flexDirection="row">
-          {img}
-
-          <Text color="cyan" italic>Sencha</Text>
-          <Text dimColor> · </Text>
-          <Text color="yellow" italic>Classic toolkit · Classic theme</Text>
-        </Box>
-        {beneath}
-      </Box>
-    )
-  }).catch(($, e, next) => { doError($, e); return next(e) });
-
-  // on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => {
-  //   //if (e.requestId !== tool_use_id) return next(e)
-  //   const { Box, Text } = $.ui.resolve(e)
-  //   return Box({
-  //     flexDirection: 'row',
-  //     columnGap: 1,
-  //     children: [
-  //       Text({ color: 'cyan', children: ['⚡ Custom Progress:'] }),
-  //       // Call next(e) to retain engine defaults, or return your own custom elements
-  //       await next(e),
-  //     ]
-  //   });
-  // })
 
   on('session.start', async ($, e, next) => {
-    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "transcript" })
-    //$.ui.log(`session.start: ${await versionString($)} At ${new Date().toLocaleString()}`, { to: "debug" })
-
     await $.command.register({ name: 'sencha', description: 'Open the Sencha side pane' })
     await $.command.register({ name: 'callit', description: 'Call a tool' })
     await $.command.register({ name: 'ask', description: 'Ask Example' })
@@ -527,6 +373,36 @@ export const register: Register = on => {
   //   return next(e)
   // }).catch(($, e, next) => { doError($, e); return next(e) });
 
+  // on('ui.log', ($, e, next) => {
+  //  //     const { Box, Text } = $.ui.resolve(e)
+  //   // documented rewrite: keep the line off screen (debug log only)
+
+  //   // return (
+  //   //   <Box>
+  //   //     <Text>Hello there</Text>
+  //   //   </Box>
+  //   // )
+
+  //   return next({ ...e, to: "debug" })
+  // })
+
+  on('ui.close', async ($, e, next) => {
+    //await update($, messages, list => [...list, { title: 'ui.close', message: JSON.stringify(e, null, spaces) }]);
+    const message = JSON.stringify(e, null, spaces)
+    await addSection($, 'ui.close', message)
+
+    if (e.id !== PANE) return next(e)
+    //isPaneOpen = false
+    return next(e)
+  }).catch(($, e, next) => { doError($, e); return next(e) });
+
+  on('ui.press', async ($, e, next) => {
+    //await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
+    if (e.plugin !== $.plugin.name || e.requestId !== PANE) return next(e)
+    if (e.element === 'close') await $.ui.close({ id: PANE }).catch(() => undefined)
+    return next(e)
+  }).catch(($, e, next) => { doError($, e); return next(e) });
+
   on('session.end', async ($, e, next) => {
     await update($, messages, list => [...list, { title: 'session.end', message: JSON.stringify(e, null, spaces) }]);
     // /clear starts a new conversation in the same process: its cache is a new one
@@ -543,19 +419,6 @@ export const register: Register = on => {
     //timer?.cancel()
     //timer = undefined
     return next(e)
-  }).catch(($, e, next) => { doError($, e); return next(e) });
-
-  on('command.run', { command: 'ask' }, async ($, e, next) => {
-    const tool = `mcp__plugin_sencha_extjs-tools__test-global-set`; const name = 'test-global-set';
-    const value = 'hello'
-    const { decision } = await $.tool.check({ tool, input: { name, value } })
-    //$.ui.log(`decision ${decision}`)
-    if (decision !== 'allow') {
-      const answer = await $.ui.ask(`SET Allow ${name} with value '${value}'?`, ['Yes', 'No'])
-      if (answer !== 'Yes') return { text: 'ask cancelled' }
-    }
-    const out = await next(e)
-    return { ...out, text: JSON.stringify({ text: 'polling done' }) }
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('command.run', { command: 'sencha' }, async $ => {
@@ -575,27 +438,40 @@ export const register: Register = on => {
     return { text: 'Sencha pane opened' }
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
-  on('ui.close', async ($, e, next) => {
-    //await update($, messages, list => [...list, { title: 'ui.close', message: JSON.stringify(e, null, spaces) }]);
-    const message = JSON.stringify(e, null, spaces)
-    await addSection($, 'ui.close', message)
+  on('command.run', { command: 'callit' }, async ($, e, next) => {
+    await update($, lines, () => [])
+    await update($, steps, () => [])
+    await update($, messages, () => [])
 
-    if (e.id !== PANE) return next(e)
-    //isPaneOpen = false
-    return next(e)
+    //let stop = false;
+    //let message = 'done';
+    //let out: any;
+
+    const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
+    const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42runClaude' }
+    $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
+      //out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
+      //await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
+      if (extjsInitializeWithSenchaCmdResult.deny) {
+        //message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
+        //stop = true;
+      }
+    })
+    return { text: 'running' }
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
-  on('ui.press', async ($, e, next) => {
-    //await update($, messages, list => [...list, { title: 'ui.press', message: JSON.stringify(e, null, spaces) }]);
-    if (e.plugin !== $.plugin.name || e.requestId !== PANE) return next(e)
-    if (e.element === 'close') await $.ui.close({ id: PANE }).catch(() => undefined)
-    return next(e)
+  on('command.run', { command: 'ask' }, async ($, e, next) => {
+    const tool = `mcp__plugin_sencha_extjs-tools__test-global-set`; const name = 'test-global-set';
+    const value = 'hello'
+    const { decision } = await $.tool.check({ tool, input: { name, value } })
+    //$.ui.log(`decision ${decision}`)
+    if (decision !== 'allow') {
+      const answer = await $.ui.ask(`SET Allow ${name} with value '${value}'?`, ['Yes', 'No'])
+      if (answer !== 'Yes') return { text: 'ask cancelled' }
+    }
+    const out = await next(e)
+    return { ...out, text: JSON.stringify({ text: 'polling done' }) }
   }).catch(($, e, next) => { doError($, e); return next(e) });
-
-  // on('skill.prompt', async ($, e, next) => {
-  //   await update($, messages, l => [...l, { title: 'skill.prompt', message: e.skill }])
-  //   return next(e)
-  // }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('prompt.submit', async ($, e, next) => {
     //await update($, messages, list => [...list, { title: 'prompt.submit', message: JSON.stringify(e, null, spaces) }]);
@@ -654,120 +530,6 @@ export const register: Register = on => {
     //return { ...result, text: `That turn took ${seconds}s` }
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
-  on('command.run', { command: 'callit' }, async ($, e, next) => {
-    await update($, lines, () => [])
-    await update($, steps, () => [])
-    await update($, messages, () => [])
-
-    let stop = false;
-    let message = 'done';
-    let out: any;
-
-    // await $.ui.open({ id: PANE2, title: 'extjs-initialize-with-sencha-cmd', focus: true }).catch((error) => {
-    //   $.ui.log(`extjs-initialize-with-sencha-cmd.ERROR: ${error.toString()}`)
-    // })
-
-    const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
-    const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42runClaude' }
-    //await addSection($, 'extjs-initialize-with-sencha-cmd')
-    out = $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
-      //out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
-      //await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
-      if (extjsInitializeWithSenchaCmdResult.deny) {
-        message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
-        stop = true;
-      }
-    })
-
-    return { text: 'running' }
-
-    // const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
-    // while (!stop) {
-    //   const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-    //   //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
-    //   let textJson = JSON.parse(testGlobalGetResult.result[0].text)
-    //   let data = textJson.data;
-    //   await appendLines($, data as { name: string }[])
-    //   if (JSON.stringify(textJson).includes('polling done')) stop = true
-    //   await $.clock.sleep(500)
-    // }
-
-
-    //     out = await next(e)
-    // return { ...out, text: message }
-    //await update($, steps, list => list.map(s => (s.id === id ? { ...s, status: 'done' as const } : s)))
-    // return out;
-    //return out;
-
-
-
-    // const paneOpenArgs2: PaneOpenArgs = {
-    //   id: PANE2,
-    //   title: 'Initialize with Cmd',
-    //   //rows: 600,
-    //   columns: 300,
-    //   focus: true
-    // }
-    // await $.ui.open(paneOpenArgs2).catch((error) => {
-    //   $.ui.log(`session.start.ERROR: ${error.toString()}`)
-    // })
-
-    // let message = 'done';
-    // let timer: { cancel: () => void } | undefined
-    // await update($, messages, list => [...list, { title: 'command.run', message: JSON.stringify(e, null, spaces) }]);
-    // //const senchaGenerateAppTool = `mcp__plugin_sencha_extjs-tools__sencha-generate-app`; const senchaGenerateAppName = 'sencha-generate-app';
-    // //const args: any = { tool: senchaGenerateAppTool, cwd: '/Users/demo/upgrade/run', name: 'test01', toolkit: 'classic' }
-    // const extjsInitializeWithSenchaCmdTool = `mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd`; const name3 = 'extjs-initialize-with-sencha-cmd';
-    // const args: any = { tool: extjsInitializeWithSenchaCmdTool, rootPath: '/Users/demo/upgrade/run/ext42run' }
-    // $.tool.call(args).then(async extjsInitializeWithSenchaCmdResult => {
-    //   await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult', message: JSON.stringify(extjsInitializeWithSenchaCmdResult, null, spaces) }]);
-    //   if (extjsInitializeWithSenchaCmdResult.deny) {
-    //     message = JSON.stringify(extjsInitializeWithSenchaCmdResult)
-    //     timer?.cancel()
-    //   }
-    // }).catch(error => $.ui.log(`init.ERROR: ${String(error)}`))
-
-    // await update($, messages, list => [...list, { title: 'extjsInitializeWithSenchaCmdResult after', message: 'after' }]);
-
-    // // poll on a clock interval: each tick is its own dispatch, so the hook returns inside its budget
-    // const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
-    // let busy = false
-    // timer = $.clock.every(500, async () => {
-    //   await update($, messages, list => [...list, { title: 'in timer', message: `busy ${busy}` }]);
-    //   if (busy) return
-    //   busy = true
-    //   void (async () => {
-    //     try {
-    //       const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-    //       let textJson = JSON.parse(testGlobalGetResult.result[0].text)
-    //       let data = textJson.data;
-    //       await appendLines($, data as { name: string }[])
-    //       if (JSON.stringify(textJson).includes('polling done')) timer?.cancel()
-    //     } catch (error) {
-    //       $.ui.log(`poll.ERROR: ${String(error)}`)
-    //       timer?.cancel()
-    //     } finally {
-    //       busy = false
-    //     }
-    //   })()
-    // })
-    // const out = await next(e)
-    // return { ...out, text: message }
-  }).catch(($, e, next) => { doError($, e); return next(e) });
-
-  // on('ui.log', ($, e, next) => {
-  //  //     const { Box, Text } = $.ui.resolve(e)
-  //   // documented rewrite: keep the line off screen (debug log only)
-
-  //   // return (
-  //   //   <Box>
-  //   //     <Text>Hello there</Text>
-  //   //   </Box>
-  //   // )
-
-  //   return next({ ...e, to: "debug" })
-  // })
-
   on('tool.call', async ($, e, next) => {
     // run tool mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd rootPath='/Users/demo/upgrade/run/ext42run
     let stop = false;
@@ -785,7 +547,9 @@ export const register: Register = on => {
     const tool = e.tool.slice(e.tool.lastIndexOf('_') + 1)
     const subject = subjectOf(e)
     //const sectionId = await addSection($, tool, message2, { status: 'runs', subject })
-    const sectionId = await addSection($, 'tool.call', tool + message2, { status: 'runs', subject })
+    const sectionId = await addSection($, 'tool.call', e.tool + message2, { status: 'runs' })
+    // the detail is a row of its own under the tool name, not an inline detail
+    if (subject) await addItemToLatestSection($, subject)
     //await update($, steps, list => [...list, { id, tool, subject, status: 'runs' as const }].slice(-60))
 
     if (e.tool === 'mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd') {
@@ -861,165 +625,41 @@ export const register: Register = on => {
     // }
   }).catch(($, e, next) => next(e))
 
-
-
-
-
-  // //$.ui.notice(id, undefined)
-  // await update($, messages, list => [...list, { title: 'tool.call:ran', message: JSON.stringify(ran, null, spaces) }]);
-  // if (tool === 'task-start' || tool === 'task-get') {
-  //   const task = taskOf(ran)
-  //   taskId = str(task.taskId) ?? taskId
-  //   $.ui.log(`taskId: ${taskId}`)
-
-  //   //if (taskId !== undefined && !polling.has(taskId)) {
-  //   if (taskId !== undefined) {
-  //     $.ui.log(`append: ${taskId}`)
-  //     const added = await appendHistory($, task)
-  //     if (added === 0) await update($, messages, list => [...list, { title: `history:${tool}`, message: `taskId: ${taskId} · entries: ${(task.history as unknown[] | undefined)?.length ?? 0}` }])
-  //   }
-  //   else {
-  //     $.ui.log(`NO append: ${taskId}`)
-  //   }
-  //   // the model may not poll, so the pane polls the task itself until it ends
-  //   if (tool === 'task-start' && taskId !== undefined && !polling.has(taskId)) {
-  //     const name = e.tool.replace(/task-start$/, 'task-get')
-  //     const pollId = taskId
-  //     polling.add(pollId)
-  //     const step = async (tries: number): Promise<void> => {
-  //       if (tries <= 0 || !polling.has(pollId)) {
-  //         polling.delete(pollId)
-  //         return
-  //       }
-  //       internalToolCall = true
-  //       let res: any
-  //       try {
-  //         res = await $.tool.call({ tool: name, taskId: pollId } as any)
-  //       } finally {
-  //         internalToolCall = false
-  //       }
-  //       const t = taskOf(res)
-  //       const state = str(t.status)
-  //       await appendHistory($, t)
-  //       if (state === 'completed' || state === 'failed' || state === 'cancelled') {
-  //         polling.delete(pollId)
-  //         return
-  //       }
-  //       $.clock.after(2000, () => { void step(tries - 1) })
-  //     }
-  //     $.clock.after(2000, () => { void step(300) })
-  //   }
-  // }
-
-  // //await update($, messages, list => [...list, { title: 'tool', message: `tool: ${tool}` }]);
-
-  // // if (tool === 'job-status') {
-  // //   const result = ran.result as Array<{ text?: string }> | undefined
-  // //   const statusJson = parseObj(result?.[0]?.text ?? '') as { state?: string; percent?: number; message?: string }
-  // //   //await update($, messages, list => [...list, { title: 'status', message: JSON.stringify(result?.[0]?.text, null, spaces) }]);
-  // //   await update($, messages, list => [...list, { title: 'status', message: `${statusJson.state}: ${statusJson.percent}% - ${statusJson.message}` }]);
-  // // }
-
-  // // const blocks = ran.result as Array<{ text?: string }> | undefined
-  // // const text = blocks?.[0]?.text ?? ''
-  // // if (tool === 'task-start') {
-  // //   // a start result that is not JSON keeps the previous task id
-  // //   const started = parseObj(text)
-  // //   taskId = str(started.taskId) ?? taskId
-  // //   let statusMessage = str(started.statusMessage) ?? ''
-  // //   await update($, status, list => [...list, { title: 'task-start', message: statusMessage }])
-  // //   await update($, messages, list => [...list, { title: 'task-start', message: text }])
-  // // }
-  // // if (tool === 'task-get' && taskId !== undefined && (e as { taskId?: string }).taskId === taskId) {
-  // //   let statusMessage = str(parseObj(text).statusMessage) ?? ''
-  // //   await update($, status, list => [...list, { title: 'task-get', message: statusMessage }])
-  // //   await update($, messages, list => [...list, { title: 'task-get', message: statusMessage }])
-  // // }
-
-  // const failed = ran.isError === true || ran.deny !== undefined
-  // await update($, steps, list =>
-  //   list.map(one => (one.id === id ? { ...one, status: failed ? ('fail' as const) : ('done' as const) } : one)),
-  // )
-  // if (!failed) await update($, run, prev => absorb(tool, ran.text, prev))
-  // return ran
-  // // Bookkeeping only: never let a pane failure change what the tool does.
-  // }).catch(($, e, next) => next(e))
-
-  // on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-  //   const ran = await next({ ...e, command: e.command.trim() })
-  //   const hasFailed = ran.deny === undefined && ran.isError === true
-  //   $.ui.status(hasFailed ? `failed: ${e.command.slice(0, 40)}` : undefined)
-  //   return ran
-  // })
-
-  // // The matcher limits the hook to Bash calls, so e.command is the shell command
-  // on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-  //   //if (/git push .*--force/.test(e.command)) {
-  //   if (/ls/.test(e.command)) {
-  //     // Returning without calling next answers the event, so the command never runs
-  //     // return { deny: 'Force pushes are not allowed in this repository. Push to a new branch instead.' }
-  //     return { deny: 'ls is not allowed.' }
-  //   }
-  //   // Every other command goes on to the permission check and then to Bash
-  //   return next(e)
-  // })
-
-  // on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-  //   const RISKY = /\brm\s+-rf?\b|\bgit\s+reset\s+--hard\b|\bgit\s+push\b.*--force/
-
-  //   // Let every other command through without a question
-  //   if (!RISKY.test(e.command)) return next(e)
-  //   // Start from the safe answer, so a question nobody answers refuses the command
-  //   let answer = 'Refuse'
-  //   try {
-  //     // The tool call waits here until the user picks one of the two labels
-  //     answer = await $.ui.ask('Run this command? ' + e.command, ['Run it', 'Refuse'])
-  //   } catch {
-  //     // The user dismissed the question, or this is a claude -p run with nobody to ask
-  //   }
-  //   if (answer !== 'Run it') {
-  //     // Answer without calling next, so the command doesn't run
-  //     return { deny: 'The user declined this command. Ask before trying a different approach.' }
-  //   }
-  //   return next(e)
-  // })
-
-
-  //     <Box flexDirection="column">
-  //     <Box flexDirection="row">
-  //       <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha" />
-  //       <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
-  //       <Box marginLeft={2}>{version}</Box>
-  //       <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
-  //     </Box>
-  //     {buttons}
-  //     {body}
-  //     {bottom}
-  //   </Box>
-  // )
-
-
-  // on('ui.render', { component: 'Pane', requestId: PANE2 }, async ($, e) => {
-  //   const linesEntries: { name: string }[] = await read($, lines)
-  //   const { Box, Text, Button } = $.ui.resolve(e)
-  //   return (
-  //     <Box flexDirection="column">
-
-  //       <Box marginTop={2}><Text color="yellow" italic>LINES</Text></Box>
-  //       {
-  //         linesEntries.length === 0 ? (
-  //           <Text dimColor>No lines yet.</Text>
-  //         ) : (
-  //           linesEntries.map((l, i) => (
-  //             <Text key={`line${i}`}>
-  //               <Text color="cyan">{l.name}</Text>
-  //             </Text>
-  //           ))
-  //         )
-  //       }
-  //     </Box>
-  //   )
-  // }).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e); return next(e) });
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const { Box, Text } = $.ui.resolve(e)
+    let img
+    if (e.surface === 'terminal') {
+      const { Image } = $.ui.resolve(e)
+      img = <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
+    }
+    const beneath = await next(e)
+    return (
+      <Box flexDirection="column" marginTop={1}>
+        <Box flexDirection="row">
+          {img}
+          <Text color="cyan" italic>Sencha</Text>
+          <Text dimColor> · </Text>
+          <Text color="yellow" italic>Classic toolkit · Classic theme</Text>
+        </Box>
+        {beneath}
+      </Box>
+    )
+  }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('ui.message', async ($, e, next) => {
     if (e.element === 'header-test') {
@@ -1038,7 +678,7 @@ export const register: Register = on => {
     if (e.element === 'clear-top' || e.element === 'clear-bottom') {
       const data = e.data as { press?: boolean; over?: boolean }
       if (data?.over === true) {
-        $.ui.status('Clear: empties the pane data and the expander sections')
+        $.ui.status('Clear: empties the pane data and the expander')
       }
       if (data?.over === false) {
         $.ui.status(undefined)
@@ -1139,8 +779,6 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
-
-
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
     // // Log placement only when it changes, not on every render
@@ -1181,14 +819,16 @@ export const register: Register = on => {
     let version =
       <Text color="cyan" italic>{await versionString($)}</Text>
 
+    const allExpanded = sections.length > 0 && sections.every(s => s.expanded)
     const buttons = (Client: any) => (
       <Box flexDirection="row" marginTop={1}>
-        <Box marginRight={1}>
-          <Client key="clear-top" module="./button.tsx" props={{ id: 'clear-top', label: 'clear', dim: false } satisfies ButtonProps} />
-        </Box>
-        <Box marginRight={1}>
-          <Client key="close-top" module="./button.tsx" props={{ id: 'close-top', label: 'close', dim: false } satisfies ButtonProps} />
-        </Box>
+        <Box marginRight={1}><Client key="clear-top" module="./components/button.tsx" props={{ id: 'clear-top', label: 'clear', dim: false } satisfies ButtonProps} /></Box>
+        <Box marginRight={1}><Client key="close-top" module="./components/button.tsx" props={{ id: 'close-top', label: 'close', dim: false } satisfies ButtonProps} /></Box>
+        <Box marginRight={1}><Client key="toggle-all" module="./components/button.tsx" props={{ id: 'toggle-all', label: allExpanded ? 'Collapse All' : 'Expand All', dim: false } satisfies ButtonProps} /></Box>
+        <Box marginRight={1}><Client key="add-section" module="./components/button.tsx" props={{ id: 'add-section', label: 'Add Section', dim: false } satisfies ButtonProps} /></Box>
+        <Box marginRight={1}><Client key="add-item-latest" module="./components/button.tsx" props={{ id: 'add-item-latest', label: 'Add Item to Latest Section', dim: false } satisfies ButtonProps} /></Box>
+        <Box marginRight={1}><Client key="run-test" module="./components/button.tsx" props={{ id: 'run-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
+
         {/* <Box borderStyle='single' marginLeft={2} paddingX={1} paddingY={0}>
           <Button plain={true} key="pane2" label="Initialize with Cmd" onPress={async () => {
             await $.ui.open({ id: PANE2, title: 'Initialize with Cmd', focus: true }).catch((error) => {
@@ -1199,9 +839,20 @@ export const register: Register = on => {
       </Box>
     )
 
-    // one row per run of identical tool calls and steps
-    const listRuns = runsOf(list, (a, b) => a.tool === b.tool && a.subject === b.subject)
-    const feedRuns = runsOf(feed, (a, b) => a.title === b.title && a.message === b.message)
+    const bottom = (Client: any) => (
+      <Box flexDirection="row" marginTop={1}>
+        <Box marginRight={1}>
+          <Client key="clear-bottom" module="./components/button.tsx" props={{ id: 'clear-bottom', label: 'clear', dim: false } satisfies ButtonProps} />
+        </Box>
+        <Box marginRight={1}>
+          <Client key="close-bottom" module="./components/button.tsx" props={{ id: 'close-bottom', label: 'close', dim: false } satisfies ButtonProps} />
+        </Box>
+      </Box>
+    )
+
+    // // one row per run of identical tool calls and steps
+    // const listRuns = runsOf(list, (a, b) => a.tool === b.tool && a.subject === b.subject)
+    // const feedRuns = runsOf(feed, (a, b) => a.title === b.title && a.message === b.message)
 
     let body =
       <Box flexDirection="column">
@@ -1241,7 +892,7 @@ export const register: Register = on => {
           )
         } */}
 
-        <Box marginTop={2}><Text color="yellow" italic>TOOL CALLS</Text></Box>
+        {/* <Box marginTop={2}><Text color="yellow" italic>TOOL CALLS</Text></Box>
         {
           listRuns.length === 0 ? (
             <Text dimColor>No tool calls yet.</Text>
@@ -1270,8 +921,9 @@ export const register: Register = on => {
               )
             })
           )
-        }
-        <Box marginTop={2}><Text color="yellow" italic>STEPS</Text></Box>
+        } */}
+
+        {/* <Box marginTop={2}><Text color="yellow" italic>STEPS</Text></Box>
         {
           feed.length === 0 ? (
             <Text dimColor>No steps yet.</Text>
@@ -1284,24 +936,14 @@ export const register: Register = on => {
               </Text>
             ))
           )
-        }
-      </Box>;
+        } */}
 
-    const bottom = (Client: any) => (
-      <Box flexDirection="row" marginTop={1}>
-        <Box marginRight={1}>
-          <Client key="clear-bottom" module="./button.tsx" props={{ id: 'clear-bottom', label: 'clear', dim: false } satisfies ButtonProps} />
-        </Box>
-        <Box marginRight={1}>
-          <Client key="close-bottom" module="./button.tsx" props={{ id: 'close-bottom', label: 'close', dim: false } satisfies ButtonProps} />
-        </Box>
-      </Box>
-    )
+      </Box>;
 
     //if (e.surface !== 'terminal' && e.surface !== 'vscode' && e.surface !== 'mobile') {
     if (e.surface === 'desktop') {
       const { Box, Text, Svg, Client } = $.ui.resolve(e)
-      const allExpanded = sections.length > 0 && sections.every(s => s.expanded)
+
       const dropped: string[] = []
       const expander = expanderProps(dropped)
       if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
@@ -1313,23 +955,21 @@ export const register: Register = on => {
             <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
             <Box marginLeft={2}>{version}</Box>
             <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
-            <Box marginLeft={2}><Client key="header-test" module="./button.tsx" props={{ id: 'header-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginLeft={2}><Client key="header-test" module="./components/button.tsx" props={{ id: 'header-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
           </Box>
           {buttons(Client)}
           {body}
 
+          {/* <Box marginTop={1} marginBottom={1}>
+            <Box marginRight={1}><Client key="toggle-all" module="./components/button.tsx" props={{ id: 'toggle-all', label: allExpanded ? 'Collapse All' : 'Expand All', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginRight={1}><Client key="add-section" module="./components/button.tsx" props={{ id: 'add-section', label: 'Add Section', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginRight={1}><Client key="add-item-latest" module="./components/button.tsx" props={{ id: 'add-item-latest', label: 'Add Item to Latest Section', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginRight={1}><Client key="run-test" module="./components/button.tsx" props={{ id: 'run-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
+          </Box> */}
 
-
-          <Box marginTop={1} marginBottom={1}>
-            <Box marginRight={1}><Client key="toggle-all" module="./button.tsx" props={{ id: 'toggle-all', label: allExpanded ? 'Collapse All' : 'Expand All', dim: false } satisfies ButtonProps} /></Box>
-            <Box marginRight={1}><Client key="add-section" module="./button.tsx" props={{ id: 'add-section', label: 'Add Section', dim: false } satisfies ButtonProps} /></Box>
-            <Box marginRight={1}><Client key="add-item-latest" module="./button.tsx" props={{ id: 'add-item-latest', label: 'Add Item to Latest Section', dim: false } satisfies ButtonProps} /></Box>
-            <Box marginRight={1}><Client key="run-test" module="./button.tsx" props={{ id: 'run-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
-          </Box>
+          <Box marginTop={2}><Text color="yellow" italic>STEPS</Text></Box>
           {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
-          <Client key="expander" module="./expander.tsx" props={expander satisfies ExpanderProps} />
-
-
+          <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
 
           {bottom(Client)}
         </Box>
@@ -1348,12 +988,12 @@ export const register: Register = on => {
             <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
             <Box marginLeft={2}>{version}</Box>
             <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
-            <Box marginLeft={2}><Client key="header-test" module="./button.tsx" props={{ id: 'header-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
+            <Box marginLeft={2}><Client key="header-test" module="./components/button.tsx" props={{ id: 'header-test', label: 'Test', dim: false } satisfies ButtonProps} /></Box>
           </Box>
           {buttons(Client)}
           {body}
           {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
-          <Client key="expander" module="./expander.tsx" props={expander satisfies ExpanderProps} />
+          <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
           {bottom(Client)}
         </Box>
       )
