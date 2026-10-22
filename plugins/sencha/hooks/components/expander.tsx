@@ -176,7 +176,7 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
             overflow="hidden"
             backgroundColor={hoverOn(sec.id, 0) ? props.hoverBg : undefined}
           >
-            <Box width={15} flexShrink={0}>
+            <Box width={17} flexShrink={0}>
               <Text color={titleColor} wrap="truncate">{` ${sec.expanded ? caretOpen : caretClosed} ${sec.title}`}</Text>
             </Box>
             {sec.message ? <Text color="white">{`${sec.message}`}</Text> : null}
