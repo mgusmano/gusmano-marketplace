@@ -41,7 +41,7 @@ export function doError($: any, e: any, next?: { error?: { kind?: string; messag
 }
 
 function dataFor($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) {
-  if (e.component === 'UserMessage') {
+  if (e.component === 'zzzUserMessage') {
     $.ui.log(`renderMessage: ${JSON.stringify(e, null, 2)}`)
   }
   switch (e.component) {
@@ -53,7 +53,7 @@ function dataFor($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     case 'ToolGroup': return { label: 'Tool Group', text: e.props.text, showNext: true, marginTop: 0 }
     case 'AssistantMessage': return { label: 'Message', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
     case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: false, marginTop: 0 }
-    case 'Spinner': return { label: 'Spinner', text: e.props.word, showNext: true, marginTop: 0 }
+    case 'Spinner': return { label: 'Working', text: e.props.word, showNext: true, marginTop: 0 }
     case 'SessionMode': return { label: 'Session Mode', text: '', showNext: true, marginTop: 0 }
     case 'InfoNotice': return { label: 'Notice', text: e.props.text, showNext: true, marginTop: 0 }
     case 'TurnDuration': return { label: 'Time', text: e.props.durationMs + 'ms', showNext: true, marginTop: 0 }
