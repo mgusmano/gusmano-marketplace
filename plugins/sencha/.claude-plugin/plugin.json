@@ -13,9 +13,11 @@
   "mcpServers": {
     "extjs-tools": {
       "type": "stdio",
-      "command": "node",
+      "command": "npx",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/ExtJSToolsMCPServer.mjs"
+        "-y",
+        "tsx",
+        "/Users/marcgusmano/@/vNext/MCPServers/src/ExtJSToolsMCPServer.ts"
       ],
       "env": {}
     },

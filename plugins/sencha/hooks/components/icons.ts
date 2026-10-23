@@ -2,8 +2,12 @@ import type { FileNode } from './types'
 
 const cp = (n: number) => String.fromCodePoint(n)
 
-export const CHEVRON_OPEN = cp(0xf47c)
-export const CHEVRON_CLOSED = cp(0xf460)
+// Nerd Font Material Design set: chevrons and circle share one glyph grid, so they centre on the same line.
+export const CHEVRON_OPEN = cp(0xf0140)
+export const CHEVRON_CLOSED = cp(0xf0142)
+export const CIRCLE_NERD = cp(0xf0765)
+// Unicode fallback for terminals without a Nerd Font: a standard black circle, one cell wide.
+export const CIRCLE_FILLED = cp(0x25cf)
 
 const NAMES: Record<string, number> = {
   'agents.md': 0xf0354,

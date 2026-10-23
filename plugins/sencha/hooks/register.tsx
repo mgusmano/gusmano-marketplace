@@ -106,22 +106,27 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
   on('tool.call', async ($, e, next) => {
+    const isProgress = 'progress' in e ? e.progress : undefined;
     let stop = false;
     let out: any;
     const message2 = ' '
     const subject = subjectOf(e)
     const sectionId = await addSection($, 'tool.call', e.tool + message2, { status: 'runs' })
+    for (const [key, value] of Object.entries(e)) {
+      if (key === 'tool' || key === 'progress' || key === 'tool_use_id' || value === undefined) continue
+      const text = typeof value === 'string' ? value : JSON.stringify(value)
+      await addItemToLatestSection($, `${key}: ${text}`, '#c4b5fd')
+    }
     if (subject) await addItemToLatestSection($, subject)
-    if (e.tool === 'mcp__plugin_sencha_extjs-tools__extjs-initialize-with-sencha-cmd') {
-      out = next(e).then(async extjsInitializeWithSenchaCmdResult => {
-        if (extjsInitializeWithSenchaCmdResult.deny) {
-          stop = true;
-        }
+    let theResult;
+    if (isProgress) {
+      out = next(e).then(async toolResult => {
+        theResult = toolResult;
+        stop = true;
       })
       const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`; const testGlobalGetName = 'test-global-get';
       while (!stop) {
         const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-        //$.ui.log(`testGlobalGetResult ${JSON.stringify(testGlobalGetResult)}`)
         let textJson = JSON.parse(testGlobalGetResult.result[0].text)
         let data = textJson.data;
         await appendLines($, data as { name: string }[])
@@ -131,10 +136,14 @@ export const register: Register = on => {
     }
     else {
       out = await next(e)
+      theResult = out;
     }
-    const failed = out != null && typeof out.then !== 'function' && (out.isError === true || out.deny !== undefined)
+    const failed = theResult != null && (theResult.isError === true || theResult.deny !== undefined)
+    if (failed === true) {
+      await addItemToLatestSection($, theResult.result)
+    }
     setSectionStatus($, sectionId, failed ? 'fail' : 'done')
-    return out;
+    return theResult;
   }).catch((_, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -318,82 +327,87 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
-    let version =
-      <Text color="cyan" italic>{await versionString($)}</Text>
-    const allExpanded = sections().length > 0 && sections().every(s => s.expanded)
+    try {
+      let version =
+        <Text color="cyan" italic>{await versionString($)}</Text>
+      const allExpanded = sections().length > 0 && sections().every(s => s.expanded)
 
-    const top = (Client: any, surface: RenderSurface) => (
-      <Box flexDirection="row" marginTop={1}>
-        <Box marginRight={1}><Client key="clear-top" module="./components/button.tsx" props={{ id: 'clear-top', label: 'clear', dim: false, surface } satisfies ButtonProps} /></Box>
-        <Box marginRight={1}><Client key="close-top" module="./components/button.tsx" props={{ id: 'close-top', label: 'close', dim: false, surface } satisfies ButtonProps} /></Box>
-        <Box marginRight={1}> <Client key="bottom-top" module="./components/button.tsx" props={{ id: 'bottom-top', label: 'bottom', dim: false, surface } satisfies ButtonProps} /> </Box>
-        <Box marginRight={1}><Client key="toggle-all" module="./components/button.tsx" props={{ id: 'toggle-all', label: allExpanded ? 'Collapse All' : 'Expand All', dim: false, surface } satisfies ButtonProps} /></Box>
-        <Box marginRight={1}><Client key="add-section" module="./components/button.tsx" props={{ id: 'add-section', label: 'Add Section', dim: false, surface } satisfies ButtonProps} /></Box>
-        <Box marginRight={1}><Client key="add-item-latest" module="./components/button.tsx" props={{ id: 'add-item-latest', label: 'Add Item to Latest Section', dim: false, surface } satisfies ButtonProps} /></Box>
-        <Box marginRight={1}><Client key="run-test" module="./components/button.tsx" props={{ id: 'run-test', label: 'Test', dim: false, surface } satisfies ButtonProps} /></Box>
-      </Box>
-    )
-
-    const bottom = (Client: any, surface: RenderSurface) => (
-      <Box flexDirection="row" marginTop={1}>
-        <Box marginRight={1}> <Client key="clear-bottom" module="./components/button.tsx" props={{ id: 'clear-bottom', label: 'clear', dim: false, surface } satisfies ButtonProps} /> </Box>
-        <Box marginRight={1}> <Client key="close-bottom" module="./components/button.tsx" props={{ id: 'close-bottom', label: 'close', dim: false, surface } satisfies ButtonProps} /> </Box>
-        <Box marginRight={1}> <Client key="top-bottom" module="./components/button.tsx" props={{ id: 'top-bottom', label: 'top', dim: false, surface } satisfies ButtonProps} /> </Box>
-      </Box>
-    )
-
-    if (e.surface === 'desktop') {
-      const { Box, Text, Svg, Client } = $.ui.resolve(e)
-      const dropped: string[] = []
-      const expander = expanderProps(dropped)
-      if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
-      return (
-        <Box flexDirection="column">
-          <Box flexDirection="row">
-            <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha" />
-            <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
-            <Box marginLeft={2}>{version}</Box>
-            <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
-          </Box>
-          {top(Client, e.surface)}
-          <Box marginTop={1}><Text color="yellow" italic>STEPS</Text></Box>
-          {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
-          <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
-          {bottom(Client, e.surface)}
+      const top = (Client: any, surface: RenderSurface) => (
+        <Box flexDirection="row" marginTop={1}>
+          <Box marginRight={1}><Client key="clear-top" module="./components/button.tsx" props={{ id: 'clear-top', label: 'clear', dim: false, surface } satisfies ButtonProps} /></Box>
+          <Box marginRight={1}><Client key="close-top" module="./components/button.tsx" props={{ id: 'close-top', label: 'close', dim: false, surface } satisfies ButtonProps} /></Box>
+          <Box marginRight={1}> <Client key="bottom-top" module="./components/button.tsx" props={{ id: 'bottom-top', label: 'bottom', dim: false, surface } satisfies ButtonProps} /> </Box>
+          <Box marginRight={1}><Client key="toggle-all" module="./components/button.tsx" props={{ id: 'toggle-all', label: allExpanded ? 'Collapse All' : 'Expand All', dim: false, surface } satisfies ButtonProps} /></Box>
+          <Box marginRight={1}><Client key="add-section" module="./components/button.tsx" props={{ id: 'add-section', label: 'Add Section', dim: false, surface } satisfies ButtonProps} /></Box>
+          <Box marginRight={1}><Client key="add-item-latest" module="./components/button.tsx" props={{ id: 'add-item-latest', label: 'Add Item to Latest Section', dim: false, surface } satisfies ButtonProps} /></Box>
+          <Box marginRight={1}><Client key="run-test" module="./components/button.tsx" props={{ id: 'run-test', label: 'Test', dim: false, surface } satisfies ButtonProps} /></Box>
         </Box>
       )
-    }
 
-    if (e.surface === 'terminal') {
-      const { Image, Text, Client } = $.ui.resolve(e)
-      const dropped: string[] = []
-      const expander = expanderProps(dropped)
-      if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
-      return (
-        <Box flexDirection="column">
-          <Box flexDirection="row">
-            <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
-            <Box marginLeft={2}>{version}</Box>
-            <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
-          </Box>
-          {top(Client, e.surface)}
-          <Box marginTop={1}><Text color="yellow" italic>STEPS</Text></Box>
-          {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
-          <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
-          {bottom(Client, e.surface)}
+      const bottom = (Client: any, surface: RenderSurface) => (
+        <Box flexDirection="row" marginTop={1}>
+          <Box marginRight={1}> <Client key="clear-bottom" module="./components/button.tsx" props={{ id: 'clear-bottom', label: 'clear', dim: false, surface } satisfies ButtonProps} /> </Box>
+          <Box marginRight={1}> <Client key="close-bottom" module="./components/button.tsx" props={{ id: 'close-bottom', label: 'close', dim: false, surface } satisfies ButtonProps} /> </Box>
+          <Box marginRight={1}> <Client key="top-bottom" module="./components/button.tsx" props={{ id: 'top-bottom', label: 'top', dim: false, surface } satisfies ButtonProps} /> </Box>
         </Box>
       )
-    }
 
-    if (e.surface === 'vscode') {
-      return (<Text>vscode</Text>)
-    }
+      if (e.surface === 'desktop') {
+        const { Box, Text, Svg, Client } = $.ui.resolve(e)
+        const dropped: string[] = []
+        const expander = expanderProps(dropped)
+        if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
+        return (
+          <Box flexDirection="column">
+            <Box flexDirection="row">
+              <Svg source={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} width={25} height={25} alt="Sencha" />
+              <Box marginLeft={2}><Text color="yellow" italic>Sencha</Text></Box>
+              <Box marginLeft={2}>{version}</Box>
+              <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
+            </Box>
+            {top(Client, e.surface)}
+            <Box marginTop={1}><Text color="yellow" italic>STEPS</Text></Box>
+            {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
+            <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
+            {bottom(Client, e.surface)}
+          </Box>
+        )
+      }
 
-    if (e.surface === 'mobile') {
-      return (<Text>mobile</Text>)
-    }
+      if (e.surface === 'terminal') {
+        const { Image, Text, Client } = $.ui.resolve(e)
+        const dropped: string[] = []
+        const expander = expanderProps(dropped)
+        if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
+        return (
+          <Box flexDirection="column">
+            <Box flexDirection="row">
+              <Box><Image source={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} columns={2} rows={1} alt="Sencha" /></Box>
+              <Box marginLeft={2}>{version}</Box>
+              <Box marginLeft={2}><Text color="yellow" italic>{new Date().toLocaleString()}</Text></Box>
+            </Box>
+            {top(Client, e.surface)}
+            <Box marginTop={1}><Text color="yellow" italic>STEPS</Text></Box>
+            {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
+            <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
+            {bottom(Client, e.surface)}
+          </Box>
+        )
+      }
 
-    return next(e)
+      if (e.surface === 'vscode') {
+        return (<Text>vscode</Text>)
+      }
+
+      if (e.surface === 'mobile') {
+        return (<Text>mobile</Text>)
+      }
+
+      return next(e)
+    }
+    catch (error) {
+      return (<Text>register Error</Text>)
+    }
   }).catch(($, e, next) => { doError($, e); return next(e) });
 
 }

@@ -40,6 +40,7 @@ description: Determines Ext JS project details within a repository or workspace,
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
 1. Only run this branch 1 time.
 2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` 
+        - progress=true
         - rootPath=`<rootPath>`
         returning:
         - `<sourceRoot>` 
@@ -56,6 +57,7 @@ description: Determines Ext JS project details within a repository or workspace,
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Do the following steps for each `<appFolder>` in `<sourceApps>` 
       a. Run Model Context Protocol tool `extjs-tools_sencha-app-build`
+        - progress=true
         - cwd=`<appFolder>`
       b. Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to debug and resolve any compilation errors,
     * If an error is resolved, repeat starting at step 1. Start Server until all errrors are resolved.
@@ -64,6 +66,7 @@ description: Determines Ext JS project details within a repository or workspace,
       * assign `<currentAppPath>` to `<appPath>` in `<sourceApps>` 
       a. Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
       b. Run Model Context Protocol tool `extjs-tools_sencha-app-watch`
+        - progress=true
         - cwd=`<appFolder>`
         and wait for the server ready signal.
       c. Run Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer`

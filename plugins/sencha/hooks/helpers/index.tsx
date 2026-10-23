@@ -133,7 +133,7 @@ export async function clearAll($: any) {
 }
 
 export async function appendLines($: EngineInterface, items: { name?: string }[]): Promise<number> {
-  const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined ? [] : [{ name: item.name }])
+  const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined || ['', '.'].includes(item.name.trim()) ? [] : [{ name: item.name }])
   linesSeen = items.length
   if (fresh.length > 0) {
     for (const item of fresh) {
