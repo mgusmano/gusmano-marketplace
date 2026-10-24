@@ -1,0 +1,5 @@
+{
+  "name": "prompt-box",
+  "version": "0.1.0",
+  "description": "Shows a bordered box with a line of text above the prompt."
+}

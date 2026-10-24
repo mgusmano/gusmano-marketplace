@@ -37,7 +37,9 @@ export async function versionString($: EngineInterface): Promise<string> {
 export function doError($: any, e: any, next?: { error?: { kind?: string; message?: string } }) {
   const f = next?.error
   const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
-  $.ui.log(`error${why}: ${JSON.stringify(e)}`)
+  // JSON.stringify drops an Error's message, so show name and message for those
+  const detail = e instanceof Error || typeof e?.message === 'string' ? `${e.name}: ${e.message}` : JSON.stringify(e)
+  $.ui.log(`doError error${why}: ${detail}`)
 }
 
 function dataFor($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) {
@@ -45,7 +47,7 @@ function dataFor($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     $.ui.log(`renderMessage: ${JSON.stringify(e, null, 2)}`)
   }
   switch (e.component) {
-    case 'ToolResult': return { label: 'Tool Result', text: `${e.props.tool}\n${e.props.output}`, showNext: false, marginTop: 0 }
+    case 'ToolResult': return { label: 'Result', text: `${e.props.tool}\n${e.props.output}`, showNext: false, marginTop: 0 }
     case 'AbovePrompt': return { label: 'Above', text: e.props.bodyColumns, showNext: true, marginTop: 0 }
     case 'PromptHint': return { label: 'Hint', text: e.props.hint, showNext: false, marginTop: 0 }
     case 'UserMessage': return { label: 'Prompt', text: e.props.text?.trimEnd(), showNext: false, marginTop: 0 }
@@ -132,11 +134,35 @@ export async function clearAll($: any) {
   resetSections($)
 }
 
+// The server keeps one progress list for every tool. Only initialize and generate clear it, so a
+// build or watch starts with the last run's lines and its "polling done" still in the list.
+// listStart is where this tool's own lines begin in that list.
+let listStart = 0
+
+// Called before a progress tool starts, with the list length the server has right now.
+export function startProgress(length: number) {
+  linesSeen = length
+  listStart = length
+}
+
+// True once this tool's lines are in the list and the last one says polling is done.
+export function progressFinished(items: { name?: string }[]): boolean {
+  const start = items.length < listStart ? 0 : listStart
+  return items.length > start && items[items.length - 1]?.name === 'polling done'
+}
+
 export async function appendLines($: EngineInterface, items: { name?: string }[]): Promise<number> {
+  //$.ui.log('appendLines')
+  if (items.length < linesSeen) {
+    // the server cleared its list for a new run, so this tool's lines start at the top
+    linesSeen = 0
+    listStart = 0
+  }
   const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined || ['', '.'].includes(item.name.trim()) ? [] : [{ name: item.name }])
   linesSeen = items.length
   if (fresh.length > 0) {
     for (const item of fresh) {
+      // $.ui.log(`item.name ${item.name}`)
       await addItemToLatestSection($, item.name)
     }
     await $.ui.scroll({ in: PANE, to: 'end' })

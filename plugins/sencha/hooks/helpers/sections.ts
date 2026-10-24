@@ -33,7 +33,6 @@ export function expanderProps(dropped: string[] = []): ExpanderProps {
 export function expandAll($: any) {
   try {
     list = list.map(s => ({ ...s, expanded: true }))
-    $.ui.log(`list chars ${JSON.stringify(list).length}`)
     $.ui.invalidate('ui.render')
   }
   catch (error) {
@@ -46,13 +45,16 @@ export function collapseAll($: any) {
   $.ui.invalidate('ui.render')
 }
 
-export async function addSection($: any, title?: string, message?: string, step?: Pick<ExpanderSection, 'status' | 'subject'>) {
-  if (message === undefined) { message = '' }
+// title: the first column. name: the white column after it. value: the italic purple column after that.
+export async function addSection($: any, title?: string, name?: string, value?: string, step?: Pick<ExpanderSection, 'status' | 'subject'>) {
+  if (name === undefined) { name = '' }
   const n = list.length + 1
   const id = `section-${n}`
-  const section: ExpanderSection = { id, title: title ?? `section ${n}`, message, items: [], expanded: true }
+  const section: ExpanderSection = { id, title: title ?? `section ${n}`, message: name, items: [], expanded: true }
+  if (value !== undefined) section.detail = value
   if (step?.status !== undefined) section.status = step.status
   if (step?.subject !== undefined) section.subject = step.subject
+  $.ui.log(`addSection ${title} ${name} ${value ?? ''} ${JSON.stringify(step)}`)
   list = [
     ...list.map(s => ({ ...s, expanded: false })),
     section,
@@ -80,20 +82,22 @@ export function toggleSection(id: string, open: boolean) {
   })
 }
 
-export async function addItem($: any, id: string, title?: string, color?: string) {
+export async function addItem($: any, id: string, title?: string, color?: string, italic?: boolean) {
   list = list.map(s => {
     if (s.id !== id) return s
     const n = (s.items?.length ?? 0) + 1
     const text = title ?? `item ${n}`
-    return { ...s, items: [...(s.items ?? []), color ? { text, color } : text] }
+    // only the style fields that are set, so the props stay free of undefined values
+    const item = color || italic ? { text, ...(color ? { color } : {}), ...(italic ? { italic } : {}) } : text
+    return { ...s, items: [...(s.items ?? []), item] }
   })
   //await $.clock.sleep(5000)
   $.ui.invalidate('ui.render')
 }
 
-export async function addItemToLatestSection($: any, title?: string, color?: string) {
+export async function addItemToLatestSection($: any, title?: string, color?: string, italic?: boolean) {
   const latest = list[list.length - 1]
-  if (latest) await addItem($, latest.id, title, color)
+  if (latest) await addItem($, latest.id, title, color, italic)
 }
 
 export function resetSections($: any) {

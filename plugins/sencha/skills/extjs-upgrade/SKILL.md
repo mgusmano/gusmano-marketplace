@@ -70,6 +70,7 @@ description: Determines Ext JS project details within a repository or workspace,
         - cwd=`<appFolder>`
         and wait for the server ready signal.
       c. Run Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer`
+        - progress=false
         - appPath=`<currentAppPath>`
         * to produce basic smoke test to find runtime errors. 
         * Never run puppeteer on its own - only use this Model Context Protocol tool.

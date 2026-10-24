@@ -1,7 +1,7 @@
 import type { ClientModule, RenderElement } from 'claude-code'
 import { CHEVRON_CLOSED, CHEVRON_OPEN, CIRCLE_FILLED, CIRCLE_NERD } from './icons'
 
-export type ExpanderItem = { text: string; color?: string; dim?: boolean }
+export type ExpanderItem = { text: string; color?: string; dim?: boolean; italic?: boolean }
 export type ExpanderStatus = 'runs' | 'done' | 'fail'
 export type ExpanderSection = {
   id: string
@@ -9,6 +9,7 @@ export type ExpanderSection = {
   message?: string
   status?: ExpanderStatus
   subject?: string
+  detail?: string
   items?: (string | ExpanderItem)[]
   expanded?: boolean
 }
@@ -20,7 +21,7 @@ export type ExpanderProps = {
   unicode?: boolean
   max?: number
 }
-type Row = { text: string; color?: string; dim?: boolean }
+type Row = { text: string; color?: string; dim?: boolean; italic?: boolean }
 type Local = {
   hover: { sec: string; row: number } | null
   drag: string | false
@@ -185,6 +186,7 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 <Text color={titleColor} wrap="truncate">{sec.title}</Text>
               </Box>
               {sec.message ? <Text color="white">{`${sec.message}`}</Text> : null}
+              {sec.detail ? <Text color="#c4b5fd" italic>{` ${sec.detail}`}</Text> : null}
               {right ? <Text color={titleColor} dimColor wrap="truncate">{right}</Text> : null}
               <Box flexGrow={1} />
             </Box>
@@ -196,7 +198,7 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 overflow="hidden"
                 backgroundColor={hoverOn(sec.id, 1 + i) ? props.hoverBg : undefined}
               >
-                <Text color={it.color ?? props.itemColor} dimColor={it.dim}>{`        ${it.text}`}</Text>
+                <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic}>{`        ${it.text}`}</Text>
                 <Box flexGrow={1} />
                 {clipped ? <Text>{i >= barPos && i < barPos + barSize ? '┃' : '│'}</Text> : null}
               </Box>
