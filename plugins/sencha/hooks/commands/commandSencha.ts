@@ -9,7 +9,7 @@ export async function commandSencha($: any): Promise<{ text: string }> {
     return { text: 'Sencha pane could not open: no surface is attached' }
   }
   try {
-    const opened = await $.ui.open({ id: PANE, title: 'Sencha', focus: true })
+    const opened = await $.ui.open({ id: PANE, title: 'Sencha', focus: true, columns: 320 })
     if (!opened.isPlaced) return { text: `Sencha pane waiting: ${opened.reason}` }
   } catch {
     return { text: 'Sencha pane could not open: no surface is attached' }

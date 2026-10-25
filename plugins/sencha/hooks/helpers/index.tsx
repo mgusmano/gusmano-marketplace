@@ -56,7 +56,7 @@ function dataFor($: Parameters<Hook<'ui.render'>>[0], e: { component: string; pr
     case 'AssistantMessage': return { label: 'Message', text: e.props.text?.trimEnd(), showNext: true, marginTop: 0 }
     case 'CommandOutput': return { label: 'Output', text: e.props.text, showNext: false, marginTop: 0 }
     case 'Spinner': return { label: 'Working', text: e.props.word, showNext: true, marginTop: 0 }
-    case 'SessionMode': return { label: 'Session Mode', text: '', showNext: true, marginTop: 0 }
+    case 'SessionMode': return { label: 'Mode', text: '', showNext: true, marginTop: 0 }
     case 'InfoNotice': return { label: 'Notice', text: e.props.text, showNext: true, marginTop: 0 }
     case 'TurnDuration': return { label: 'Time', text: e.props.durationMs + 'ms', showNext: true, marginTop: 0 }
     default: return { label: e.component, text: e.props.text, showNext: true, marginTop: 0 }
@@ -165,7 +165,8 @@ export async function appendLines($: EngineInterface, items: { name?: string }[]
     linesSeen = 0
     listStart = 0
   }
-  const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined || ['', '.'].includes(item.name.trim()) ? [] : [{ name: item.name }])
+  // blank lines are kept so the output keeps its spacing; only the lone '.' lines are dropped
+  const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined || item.name.trim() === '.' ? [] : [{ name: item.name }])
   linesSeen = items.length
   if (fresh.length > 0) {
     for (const item of fresh) {

@@ -1,4 +1,4 @@
-// The help dialog: a pane opened from the header's help button, showing this description.
+// The about dialog: a pane opened from the header's about button, showing this description.
 export const HELP_PANE = 'sencha-help'
 
 export const HELP_MARKDOWN = `# Sencha AI Upgrade
@@ -8,10 +8,10 @@ Sencha is a Claude Code mod for Ext JS work. It adds a header above the prompt a
 ## Above the prompt
 - **/extjs-upgrade**: runs the \`extjs-upgrade\` Skill. It finds the Ext JS project, checks the Sencha Cmd use and the Ext JS framework version, and then performs the upgrade. It opens the side pane.
 - **/extjs-dependency-report**: runs the \`extjs-dependency-report\` Skill. It builds a dependency and AST report for the Ext JS application and writes a summary Markdown file. It opens the side pane.
-- **/reext-migrate** (ReExt Migrate): not ready yet. Pressing it shows a "coming soon" message. It will run the ReExt migration.
+- **/reext-migrate** (ReExt Migrate): runs the \`reext-migrate\` Skill. It finds an Ext JS 8 application and migrates it to a Sencha ReExt app.
 - **show side pane** (Sencha in the terminal): opens the side pane and focuses it.
 - **delete v8 folder** (Delete V8 folder in the terminal): sends Claude the prompt "If there is a V8 folder, then delete it." Claude deletes the folder if it finds one. The button doesn't ask first.
-- **help** (Help in the terminal): opens this page.
+- **about** (About in the terminal): opens this page.
 
 ## Side pane
 - **go to bottom** and **go to top**: scroll to the newest or oldest step.

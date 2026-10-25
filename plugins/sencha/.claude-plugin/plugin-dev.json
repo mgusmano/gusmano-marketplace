@@ -1,15 +1,26 @@
 {
   "name": "sencha",
-  "version": "0.0.16",
+  "version": "0.0.19",
   "description": "Sencha Claude Code Mod",
+  "displayName": "Sencha",
   "types": "./types/index.d.ts",
+  "license": "MIT",
   "author": {
     "name": "Marc Gusmano",
-    "email": "mgusmano@yahoo.com"
+    "email": "mgusmano@yahoo.com",
+    "url": "https://github.com/gusmano-marketplace"
   },
+  "icon": "./.claude-plugin/icon.png",
   "skills": [
     "./"
   ],
+  "lspServers": "./.lsp.json",
+  "homepage": "https://github.com/gusmano-marketplace",
+  "repository": "https://github.com/gusmano-marketplace",
+  "documentationUrl": "https://github.com/gusmano-marketplace",
+  "supportUrl": "https://github.com/gusmano-marketplace",
+  "privacyPolicyUrl": "https://www.onewave-ai.com/privacy",
+  "termsOfServiceUrl": "https://github.com/gusmano-marketplace",
   "mcpServers": {
     "extjs-tools": {
       "type": "stdio",
@@ -49,6 +60,5 @@
       ],
       "env": {}
     }
-  },
-  "lspServers": "./.lsp.json"
+  }
 }

@@ -1,5 +1,0 @@
-{
-  "name": "sample-prompt",
-  "version": "0.1.0",
-  "description": "Adds /sample-text, which puts sample text in the prompt box."
-}

@@ -181,11 +181,11 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
               <Box width={17} flexShrink={0} flexDirection="row">
                 {/* fixed 3-column gutter so the title starts at column 3 whatever the glyph's width */}
                 <Box width={3} flexShrink={0}>
-                  <Text color={hasItems ? titleColor : 'blue'}>{` ${glyph}`}</Text>
+                  <Text color={titleColor}>{` ${glyph}`}</Text>
                 </Box>
                 <Text color={titleColor} wrap="truncate">{sec.title}</Text>
               </Box>
-              {sec.message ? <Box flexShrink={0}><Text color="white">{`${sec.message}`}</Text></Box> : null}
+              {sec.message ? <Box flexShrink={1} overflow="hidden"><Text color="white" wrap="truncate">{`${sec.message}`}</Text></Box> : null}
               {sec.detail ? <Box flexShrink={1} overflow="hidden"><Text color="#c4b5fd" italic wrap="truncate">{` ${sec.detail}`}</Text></Box> : null}
               {right ? <Text color={titleColor} dimColor wrap="truncate">{right}</Text> : null}
               <Box flexGrow={1} />
@@ -198,7 +198,9 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 overflow="hidden"
                 backgroundColor={hoverOn(sec.id, 1 + i) ? props.hoverBg : undefined}
               >
-                <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic}>{`        ${it.text}`}</Text>
+                <Box marginLeft={3} flexShrink={1} overflow="hidden">
+                  <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic} wrap="truncate">{it.text}</Text>
+                </Box>
                 <Box flexGrow={1} />
                 {clipped ? <Text>{i >= barPos && i < barPos + barSize ? '┃' : '│'}</Text> : null}
               </Box>

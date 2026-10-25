@@ -52,7 +52,7 @@ for (const surface of ['desktop', 'terminal'] as const) {
   })
 }
 
-test('appendLines skips lone-dot and blank lines and returns the count kept', { timeoutMs: 20_000 }, async ($, on) => {
+test('appendLines skips lone-dot and unnamed lines but keeps blank lines', { timeoutMs: 20_000 }, async ($, on) => {
   world(on)
   await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true })
   await clearAll($)
@@ -65,8 +65,8 @@ test('appendLines skips lone-dot and blank lines and returns the count kept', { 
     { name: undefined as never },
     { name: 'second' },
   ])
-  expect(kept, 'kept count').toBe(2)
-  expect(sections().at(-1)?.items, 'items').toEqual(['first', 'second'])
+  expect(kept, 'kept count').toBe(4)
+  expect(sections().at(-1)?.items, 'items').toEqual(['first', '   ', '', 'second'])
 })
 
 test('appendLines only takes lines it has not seen yet', { timeoutMs: 20_000 }, async ($, on) => {

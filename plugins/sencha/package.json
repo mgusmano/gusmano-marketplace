@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "commonjs",
   "scripts": {
+    "build": "node hooks/build.ts",
     "start": "bun install --no-summary && bun server.ts"
   },
   "dependencies": {
@@ -11,5 +12,8 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "vscode-languageserver": "^10.1.2",
     "vscode-languageserver-textdocument": "^1.0.15"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
