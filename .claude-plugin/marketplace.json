@@ -6,29 +6,9 @@
   "description": "A collection of plugins from Marc Gusmano",
   "plugins": [
     {
-      "name": "context-weather",
-      "source": "./plugins/context-weather",
-      "description": "context-weather mod"
-    },
-    {
-      "name": "skins",
-      "source": "./plugins/skins",
-      "description": "Skins."
-    },
-    {
-      "name": "sencha-extjs",
-      "source": "./plugins/sencha-extjs",
-      "description": "A side pane that opens with the Sencha Ext JS icon at its top."
-    },
-    {
       "name": "sencha",
       "source": "./plugins/sencha",
       "description": "A side pane that opens with the Sencha icon at its top."
-    },
-    {
-      "name": "mjg-test",
-      "source": "./plugins/mjg-test",
-      "description": "mjg-test description"
     }
   ]
 }

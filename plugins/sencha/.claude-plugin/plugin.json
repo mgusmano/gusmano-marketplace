@@ -1,8 +1,8 @@
 {
   "name": "sencha",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "Sencha Claude Code Mod",
-  "displayName": "Sencha Mod",
+  "displayName": "Sencha",
   "types": "./types/index.d.ts",
   "license": "MIT",
   "author": {
