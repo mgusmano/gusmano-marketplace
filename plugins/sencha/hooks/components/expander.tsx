@@ -185,8 +185,8 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 </Box>
                 <Text color={titleColor} wrap="truncate">{sec.title}</Text>
               </Box>
-              {sec.message ? <Text color="white">{`${sec.message}`}</Text> : null}
-              {sec.detail ? <Text color="#c4b5fd" italic>{` ${sec.detail}`}</Text> : null}
+              {sec.message ? <Box flexShrink={0}><Text color="white">{`${sec.message}`}</Text></Box> : null}
+              {sec.detail ? <Box flexShrink={1} overflow="hidden"><Text color="#c4b5fd" italic wrap="truncate">{` ${sec.detail}`}</Text></Box> : null}
               {right ? <Text color={titleColor} dimColor wrap="truncate">{right}</Text> : null}
               <Box flexGrow={1} />
             </Box>

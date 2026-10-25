@@ -8,6 +8,7 @@ Sencha is a Claude Code mod for Ext JS work. It adds a header above the prompt a
 ## Above the prompt
 - **Sencha**: opens the side pane.
 - **run extjs-upgrade**: puts \`/extjs-upgrade\` in the prompt, sends it, and opens the side pane.
+- **run extjs-dependency-report**: puts \`/extjs-dependency-report\` in the prompt, sends it, and opens the side pane.
 - **help**: shows this description.
 
 ## Side pane

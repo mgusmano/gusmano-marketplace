@@ -103,6 +103,13 @@ export async function renderMessage($: Parameters<Hook<'ui.render'>>[0], e: Rend
   )
 }
 
+// A path shown relative to the session's working directory when it is inside it; otherwise as given.
+export function relativeTo(cwd: string, path: string | undefined): string | undefined {
+  if (!path || !cwd) return path
+  const prefix = cwd.endsWith('/') ? cwd : `${cwd}/`
+  return path.startsWith(prefix) ? path.slice(prefix.length) : path
+}
+
 // The one argument that says what a built-in call is about: the file, folder,
 // command or query the tool acts on, for the pane's TOOL CALLS rows.
 export function subjectOf(e: ToolCallInput): string | undefined {

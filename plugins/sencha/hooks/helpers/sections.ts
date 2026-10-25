@@ -54,7 +54,6 @@ export async function addSection($: any, title?: string, name?: string, value?: 
   if (value !== undefined) section.detail = value
   if (step?.status !== undefined) section.status = step.status
   if (step?.subject !== undefined) section.subject = step.subject
-  $.ui.log(`addSection ${title} ${name} ${value ?? ''} ${JSON.stringify(step)}`)
   list = [
     ...list.map(s => ({ ...s, expanded: false })),
     section,

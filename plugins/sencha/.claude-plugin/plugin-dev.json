@@ -1,0 +1,54 @@
+{
+  "name": "sencha",
+  "version": "0.0.16",
+  "description": "Sencha Claude Code Mod",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Marc Gusmano",
+    "email": "mgusmano@yahoo.com"
+  },
+  "skills": [
+    "./"
+  ],
+  "mcpServers": {
+    "extjs-tools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "tsx",
+        "/Users/marcgusmano/@/vNext/MCPServers/src/ExtJSToolsMCPServer.ts"
+      ],
+      "env": {}
+    },
+    "extjs-dependency-graph": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "tsx",
+        "/Users/marcgusmano/@/vNext/MCP/extjs-dependency-graph/src/extjs-dependency-graph.ts"
+      ],
+      "env": {}
+    },
+    "extjs-ast-parser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "tsx",
+        "/Users/marcgusmano/@/vNext/MCP/extjs-ast-parser/src/extjs-ast-parser.ts"
+      ],
+      "env": {}
+    },
+    "extjs-example": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/ExtJSExampleMCPServer.mjs"
+      ],
+      "env": {}
+    }
+  },
+  "lspServers": "./.lsp.json"
+}

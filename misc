@@ -9,7 +9,15 @@
             "/Users/marcgusmano/@/vNext/MCPServers/src/ExtJSToolsMCPServer.ts"
           ],
           "env": {}
-        }
+        },
+        "extjs-ast-parser": {
+          "type": "stdio",
+          "command": "node",
+          "args": [
+            "${CLAUDE_PLUGIN_ROOT}/MCP/extjs-ast-parser/dist/extjs-ast-parser.ts"
+          ],
+          "env": {}
+        },
       },
       {
         "extjs-tools": {
