@@ -27,11 +27,15 @@ export type Message = {
 declare module 'claude-code' {
   interface PluginState {
     'sencha': {
-      lines: { name: string }[];
-      history: Message[];
-      run: UpgradeRun; 
-      steps: UpgradeStep[]; 
-      messages: Message[] 
+      // lines: { name: string }[];
+      // history: Message[];
+      // run: UpgradeRun; 
+      // steps: UpgradeStep[]; 
+      // messages: Message[]
+      percent: number | null
+      tokens: number | null
+      window: number | null
+      cost: number | null
     }
   }
   // The extjs-tools server is this mod's own, so it is never connected when the

@@ -1,3 +1,4 @@
+import { atom, read, update } from 'claude-code'
 import type { Register, EngineInterface, RenderSurface, PaneOpenArgs, Args, Frozen, Next } from 'claude-code'
 import { versionString, doError, renderMessage, clearAll, appendLines, startProgress, progressFinished, relativeTo, PANE, LOGO_SVG, LOGO_PNG } from './helpers'
 import { commandSencha } from './commands/commandSencha'
@@ -15,40 +16,56 @@ import {
 
 const spaces = 0
 
+export type Fill = number | null
+const percent = atom({ plugin: 'sencha', key: 'percent' } as const, null)
+const tokens = atom({ plugin: 'sencha', key: 'tokens' } as const, null)
+const window = atom({ plugin: 'sencha', key: 'window' } as const, null)
+const costAtom = atom({ plugin: 'sencha', key: 'cost' } as const, null)
+
+// Reads the live window's fill into the atom; the write redraws the band.
+// Never throws: a failed read must not hold up the prompt it gates.
+const refresh = async ($: EngineInterface) => {
+  try {
+    //const { version, base, builtAt } = await $.session.version()
+    const all = await $.session.version()
+    $.ui.log(`version ${JSON.stringify(all)}`)
+
+    const usage = await $.session.usage()
+    $.ui.log(`usage ${JSON.stringify(usage)}`)
+
+
+    const { context, cost } = await $.session.usage()
+    $.ui.log(`context ${JSON.stringify(context)}`)
+    let fill: Fill;
+    fill = context.percent ?? null
+    await update($, percent, () => fill)
+
+    fill = cost?.usd ?? null
+    await update($, costAtom, () => fill)
+
+
+    fill = context.tokens ?? null
+    await update($, tokens, () => fill)
+    fill = context.window ?? null
+    await update($, window, () => fill)
+  } catch {
+    // keep the last reading
+  }
+}
+
 export const register: Register = on => {
   let startedAt = 0
   let sessionCwd = ''
   let hoverHints: Partial<Record<'above' | 'pane', string>> = {}
 
   on('session.start', async ($, e, next) => {
+    $.ui.log(`session.start ${e.cwd}`)
+    await refresh($)
     sessionCwd = e.cwd
     await $.command.register({ name: 'sencha', description: 'open the Sencha side pane' })
     await $.command.register({ name: 'callit', description: 'call a tool' })
     await $.command.register({ name: 'ask', description: 'ask example' })
 
-    // const MAX_OPEN_TRIES = 10
-    // const openWhenSurface = async (tries = 1): Promise<void> => {
-    //   if ((await $.session.surfaces()).length === 0) {
-    //     if (tries >= MAX_OPEN_TRIES) {
-    //       $.ui.log(`session.start: no surface after ${MAX_OPEN_TRIES} tries, pane not opened`)
-    //       return
-    //     }
-    //     $.clock.after(500, () => { void openWhenSurface(tries + 1) })
-    //     return
-    //   }
-    //   const paneOpenArgs: PaneOpenArgs = {
-    //     id: PANE,
-    //     title: 'Sencha',
-    //     //rows: 600,
-    //     columns: 100
-    //   }
-    //   await $.ui.open(paneOpenArgs).catch((error) => {
-    //     $.ui.log(`session.start.ERROR: ${error.toString()}`)
-    //   })
-    // }
-    //$.clock.after(500, () => { void openWhenSurface() })
-
-    //await addSection($, 'session.start', `${await $.session.id()} at ${new Date().toLocaleString()}`)
     await addSection($, 'session.start', `cwd: ${e.cwd}`)
     await addItemToLatestSection($, `at: ${new Date().toLocaleString()}`, '#c4b5fd', true)
     await addItemToLatestSection($, `cwd: ${e.cwd}`, '#c4b5fd', true)
@@ -84,6 +101,7 @@ export const register: Register = on => {
   on('command.run', { command: 'ask' }, async ($, e, next) => commandAsk($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('prompt.submit', async ($, e, next) => {
+    await refresh($)
     await addSection($, 'prompt.submit', e.text)
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
@@ -109,6 +127,7 @@ export const register: Register = on => {
   }).catch(async function* ($, e, next) { doError($, e, next); yield* next(e); });
 
   on('turn.complete', async ($, e, next) => {
+    await refresh($)
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const message = `time: ${dur}`;
@@ -123,7 +142,7 @@ export const register: Register = on => {
     let out: any;
     let detail: string | undefined
     if (e.tool === 'Bash') detail = (e as { description?: string }).description
-    if (e.tool === 'Read')  detail = relativeTo(sessionCwd, e.file_path)
+    if (e.tool === 'Read') detail = relativeTo(sessionCwd, e.file_path)
     if (e.tool === 'Edit') detail = relativeTo(sessionCwd, (e as { file_path?: string }).file_path)
     if (e.tool === 'Write') detail = relativeTo(sessionCwd, (e as { file_path?: string }).file_path)
     const sectionId = await addSection($, 'tool.call', e.tool, detail, { status: 'runs' })
@@ -265,7 +284,7 @@ export const register: Register = on => {
 
   on('ui.message', { element: 'delete-v8' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     if ((e.data as { press?: boolean }).press === true) {
-       const answer = await $.ui.ask('Are you sure you want to delete V8?', ['Delete', 'Cancel']).catch(() => undefined)
+      const answer = await $.ui.ask('Are you sure you want to delete V8?', ['Delete', 'Cancel']).catch(() => undefined)
       if (answer !== 'Delete') return next(e)
       await $.process.run(['rm', '-rf', 'v8'])
         .then(({ exitCode, stderr }) => {
@@ -293,10 +312,18 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const tokensVal = await read($, tokens)
+    const windowVal = await read($, window)
+    const percentVal = await read($, percent)
+    const costVal = await read($, costAtom)
+    const costValSmall = Math.round((costVal ?? 0) * 100) / 100
+
+
     if (e.surface === 'desktop' || e.surface === 'terminal') {
       const ui = $.ui.resolve(e)
       const { Box, Text, Client } = ui
       const beneath = await next(e)
+      //$.ui.log(`beneath ${JSON.stringify(beneath)}`)
       let marginBottom = 0;
       if (beneath.type !== 'engine') {
         marginBottom = 1
@@ -307,26 +334,53 @@ export const register: Register = on => {
         : <Header Box={Box} Text={Text} Image={Image} logo={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} version={await versionString($)} />
 
       return (
-        <Box flexDirection="column" marginTop={0} >
-          <Box flexDirection="column" marginTop={0} marginBottom={marginBottom} borderStyle="round" >
-            <Box flexDirection="row">
-              {header}
-              <Box marginLeft={2} flexGrow={1}><HoverHint Box={Box} Text={Text} hint={hoverHints.above} /></Box>
-              <Client key="help" module="./components/button.tsx" props={{ id: 'help', label: 'about', dim: false, surface: e.surface, place: 'above', hint: 'describe the Sencha Claude Code Mod' } satisfies ButtonProps} />
-            </Box>
-            <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
-              <Client key="extjs-dependency-report" module="./components/button.tsx" props={{ id: 'extjs-dependency-report', label: '/extjs-dependency-report', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-dependency-report' Skill` } satisfies ButtonProps} />
-              <Client key="extjs-upgrade" module="./components/button.tsx" props={{ id: 'extjs-upgrade', label: '/extjs-upgrade', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-upgrade' Skill` } satisfies ButtonProps} />
-              <Client key="reext-migrate" module="./components/button.tsx" props={{ id: 'reext-migrate', label: '/reext-migrate', dim: false, surface: e.surface, place: 'above', hint: `run the 'reext-migrate' Skill` } satisfies ButtonProps} />
-            </Box>
-            <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
-              <Client key="sencha" module="./components/button.tsx" props={{ id: 'sencha', label: 'show side pane', dim: false, surface: e.surface, place: 'above', hint: 'open the Sencha side pane' } satisfies ButtonProps} />
-              <Client key="delete-v8" module="./components/button.tsx" props={{ id: 'delete-v8', label: 'delete v8 folder', dim: false, surface: e.surface, place: 'above', hint: 'run rm -rf v8 in the session folder' } satisfies ButtonProps} />
-            </Box>
+        <Box flexDirection="column" marginLeft={0} marginTop={0} marginBottom={marginBottom} >
+          <Box flexDirection="row">
+            {header}
+            <Box marginLeft={2} flexGrow={1}><HoverHint Box={Box} Text={Text} hint={hoverHints.above} /></Box>
+            <Client key="help" module="./components/button.tsx" props={{ id: 'help', label: 'about', dim: false, surface: e.surface, place: 'above', hint: 'describe the Sencha Claude Code Mod' } satisfies ButtonProps} />
+          </Box>
+          <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
+            <Client key="extjs-dependency-report" module="./components/button.tsx" props={{ id: 'extjs-dependency-report', label: '/extjs-dependency-report', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-dependency-report' Skill` } satisfies ButtonProps} />
+            <Client key="extjs-upgrade" module="./components/button.tsx" props={{ id: 'extjs-upgrade', label: '/extjs-upgrade', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-upgrade' Skill` } satisfies ButtonProps} />
+            <Client key="reext-migrate" module="./components/button.tsx" props={{ id: 'reext-migrate', label: '/reext-migrate', dim: false, surface: e.surface, place: 'above', hint: `run the 'reext-migrate' Skill` } satisfies ButtonProps} />
+          </Box>
+          <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
+            <Client key="sencha" module="./components/button.tsx" props={{ id: 'sencha', label: 'show side pane', dim: false, surface: e.surface, place: 'above', hint: 'open the Sencha side pane' } satisfies ButtonProps} />
+            <Client key="delete-v8" module="./components/button.tsx" props={{ id: 'delete-v8', label: 'delete v8 folder', dim: false, surface: e.surface, place: 'above', hint: 'run rm -rf v8 in the session folder' } satisfies ButtonProps} />
+          </Box>
+          <Box borderStyle='single'>
+            <Box flexGrow={1}></Box>
+            <Text color="#fb923c">{tokensVal}/{windowVal} {percentVal}% ${costValSmall.toFixed(2)}</Text>
           </Box>
           {beneath}
         </Box>
       )
+
+  
+
+
+      // return (
+      //   <Box flexDirection="column" marginTop={0} borderStyle="round" borderColor="magenta" >
+      //     <Box flexDirection="column" marginTop={0} marginBottom={marginBottom} borderStyle="round" borderColor="green" >
+      //       <Box flexDirection="row">
+      //         {header}
+      //         <Box marginLeft={2} flexGrow={1}><HoverHint Box={Box} Text={Text} hint={hoverHints.above} /></Box>
+      //         <Client key="help" module="./components/button.tsx" props={{ id: 'help', label: 'about', dim: false, surface: e.surface, place: 'above', hint: 'describe the Sencha Claude Code Mod' } satisfies ButtonProps} />
+      //       </Box>
+      //       <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
+      //         <Client key="extjs-dependency-report" module="./components/button.tsx" props={{ id: 'extjs-dependency-report', label: '/extjs-dependency-report', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-dependency-report' Skill` } satisfies ButtonProps} />
+      //         <Client key="extjs-upgrade" module="./components/button.tsx" props={{ id: 'extjs-upgrade', label: '/extjs-upgrade', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-upgrade' Skill` } satisfies ButtonProps} />
+      //         <Client key="reext-migrate" module="./components/button.tsx" props={{ id: 'reext-migrate', label: '/reext-migrate', dim: false, surface: e.surface, place: 'above', hint: `run the 'reext-migrate' Skill` } satisfies ButtonProps} />
+      //       </Box>
+      //       <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
+      //         <Client key="sencha" module="./components/button.tsx" props={{ id: 'sencha', label: 'show side pane', dim: false, surface: e.surface, place: 'above', hint: 'open the Sencha side pane' } satisfies ButtonProps} />
+      //         <Client key="delete-v8" module="./components/button.tsx" props={{ id: 'delete-v8', label: 'delete v8 folder', dim: false, surface: e.surface, place: 'above', hint: 'run rm -rf v8 in the session folder' } satisfies ButtonProps} />
+      //       </Box>
+      //     </Box>
+      //     {beneath}
+      //   </Box>
+      // )
     }
 
     if (e.surface === 'vscode') {
@@ -414,7 +468,7 @@ export const register: Register = on => {
               <Box marginLeft={2}><HoverHint Box={Box} Text={Text} hint={hoverHints.pane} /></Box>
             </Box>
             {top(Client, e.surface)}
-            {/* {test(Client, e.surface)} */}
+            {test(Client, e.surface)}
             <Box marginTop={1}><Text color="yellow" italic>STEPS</Text></Box>
             {dropped.length > 0 ? <Box marginTop={1}><Text color="error">{`expander props: dropped ${dropped.join(', ')}`}</Text></Box> : null}
             <Client key="expander" module="./components/expander.tsx" props={expander satisfies ExpanderProps} />
@@ -438,7 +492,7 @@ export const register: Register = on => {
     }
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
-    on('ui.render', { component: 'Pane', requestId: HELP_PANE }, async ($, e, next) => {
+  on('ui.render', { component: 'Pane', requestId: HELP_PANE }, async ($, e, next) => {
     const { Box, Markdown } = $.ui.resolve(e)
     return (
       <Box flexDirection="column">
