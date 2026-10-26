@@ -58,7 +58,7 @@ export const register: Register = on => {
   let hoverHints: Partial<Record<'above' | 'pane', string>> = {}
 
   on('session.start', async ($, e, next) => {
-    $.ui.log(`session.start ${e.cwd}`)
+    //$.ui.log(`session.start ${e.cwd}`)
     await refresh($)
     sessionCwd = e.cwd
     await $.command.register({ name: 'sencha', description: 'open the Sencha side pane' })
