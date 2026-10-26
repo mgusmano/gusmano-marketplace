@@ -27,27 +27,26 @@ const costAtom = atom({ plugin: 'sencha', key: 'cost' } as const, null)
 const refresh = async ($: EngineInterface) => {
   try {
     //const { version, base, builtAt } = await $.session.version()
-    const all = await $.session.version()
-    $.ui.log(`version ${JSON.stringify(all)}`)
-
-    const usage = await $.session.usage()
-    $.ui.log(`usage ${JSON.stringify(usage)}`)
-
-
+    //const all = await $.session.version()
+    //$.ui.log(`version ${JSON.stringify(all)}`)
+    //const usage = await $.session.usage()
+    //$.ui.log(`usage ${JSON.stringify(usage)}`)
     const { context, cost } = await $.session.usage()
-    $.ui.log(`context ${JSON.stringify(context)}`)
+    //$.ui.log(`context ${JSON.stringify(context)}`)
     let fill: Fill;
+
+    fill = context.tokens ?? null
+    await update($, tokens, () => fill)
+
+    fill = context.window ?? null
+    await update($, window, () => fill)
+
     fill = context.percent ?? null
     await update($, percent, () => fill)
 
     fill = cost?.usd ?? null
     await update($, costAtom, () => fill)
 
-
-    fill = context.tokens ?? null
-    await update($, tokens, () => fill)
-    fill = context.window ?? null
-    await update($, window, () => fill)
   } catch {
     // keep the last reading
   }
@@ -318,7 +317,6 @@ export const register: Register = on => {
     const costVal = await read($, costAtom)
     const costValSmall = Math.round((costVal ?? 0) * 100) / 100
 
-
     if (e.surface === 'desktop' || e.surface === 'terminal') {
       const ui = $.ui.resolve(e)
       const { Box, Text, Client } = ui
@@ -349,38 +347,13 @@ export const register: Register = on => {
             <Client key="sencha" module="./components/button.tsx" props={{ id: 'sencha', label: 'show side pane', dim: false, surface: e.surface, place: 'above', hint: 'open the Sencha side pane' } satisfies ButtonProps} />
             <Client key="delete-v8" module="./components/button.tsx" props={{ id: 'delete-v8', label: 'delete v8 folder', dim: false, surface: e.surface, place: 'above', hint: 'run rm -rf v8 in the session folder' } satisfies ButtonProps} />
           </Box>
-          <Box borderStyle='single'>
+          {/* <Box borderStyle='single'>
             <Box flexGrow={1}></Box>
             <Text color="#fb923c">{tokensVal}/{windowVal} {percentVal}% ${costValSmall.toFixed(2)}</Text>
-          </Box>
+          </Box> */}
           {beneath}
         </Box>
       )
-
-  
-
-
-      // return (
-      //   <Box flexDirection="column" marginTop={0} borderStyle="round" borderColor="magenta" >
-      //     <Box flexDirection="column" marginTop={0} marginBottom={marginBottom} borderStyle="round" borderColor="green" >
-      //       <Box flexDirection="row">
-      //         {header}
-      //         <Box marginLeft={2} flexGrow={1}><HoverHint Box={Box} Text={Text} hint={hoverHints.above} /></Box>
-      //         <Client key="help" module="./components/button.tsx" props={{ id: 'help', label: 'about', dim: false, surface: e.surface, place: 'above', hint: 'describe the Sencha Claude Code Mod' } satisfies ButtonProps} />
-      //       </Box>
-      //       <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
-      //         <Client key="extjs-dependency-report" module="./components/button.tsx" props={{ id: 'extjs-dependency-report', label: '/extjs-dependency-report', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-dependency-report' Skill` } satisfies ButtonProps} />
-      //         <Client key="extjs-upgrade" module="./components/button.tsx" props={{ id: 'extjs-upgrade', label: '/extjs-upgrade', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-upgrade' Skill` } satisfies ButtonProps} />
-      //         <Client key="reext-migrate" module="./components/button.tsx" props={{ id: 'reext-migrate', label: '/reext-migrate', dim: false, surface: e.surface, place: 'above', hint: `run the 'reext-migrate' Skill` } satisfies ButtonProps} />
-      //       </Box>
-      //       <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
-      //         <Client key="sencha" module="./components/button.tsx" props={{ id: 'sencha', label: 'show side pane', dim: false, surface: e.surface, place: 'above', hint: 'open the Sencha side pane' } satisfies ButtonProps} />
-      //         <Client key="delete-v8" module="./components/button.tsx" props={{ id: 'delete-v8', label: 'delete v8 folder', dim: false, surface: e.surface, place: 'above', hint: 'run rm -rf v8 in the session folder' } satisfies ButtonProps} />
-      //       </Box>
-      //     </Box>
-      //     {beneath}
-      //   </Box>
-      // )
     }
 
     if (e.surface === 'vscode') {
