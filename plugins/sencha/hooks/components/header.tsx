@@ -8,7 +8,7 @@ export function Header({ Box, Text, Svg, Image, logo, version }: { Box: any; Tex
   return (
     <Box flexDirection="row">
       {mark}
-      <Box marginLeft={1}><Text color="yellow" italic>Sencha AI Upgrade</Text></Box>
+      <Box marginLeft={1}><Text color="yellow" italic>Sencha Claude Code Companion</Text></Box>
       <Box marginLeft={1}><Text color="cyan" italic>{version}</Text></Box>
     </Box>
   )

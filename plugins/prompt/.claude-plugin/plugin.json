@@ -1,0 +1,6 @@
+{
+  "name": "prompt",
+  "version": "0.1.0",
+  "description": "Shows the submitted prompt in green above the prompt box, with a copy button, and opens the same prompt in a side pane with /prompt.",
+  "types": "./types/index.d.ts"
+}

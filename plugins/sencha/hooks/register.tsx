@@ -274,6 +274,14 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
+  on('ui.message', { element: 'extjs-create' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
+    if ((e.data as { press?: boolean }).press === true) {
+      await commandSencha($).catch(err => doError($, err))
+      await $.command.run({ command: 'extjs-create', args: '' }).catch(err => doError($, err))
+    }
+    return next(e)
+  }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
   on('ui.message', { element: 'sencha' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     if ((e.data as { press?: boolean }).press === true) {
       await commandSencha($).catch(err => doError($, err))
@@ -291,6 +299,32 @@ export const register: Register = on => {
           else $.ui.toast(`delete v8 failed: ${stderr.trim()}`)
         })
         .catch(err => doError($, err))
+    }
+    return next(e)
+  }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
+  on('ui.message', { element: 'copy-band' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
+    if ((e.data as { press?: boolean }).press === true) {
+      const tokensVal = await read($, tokens)
+      const windowVal = await read($, window)
+      const percentVal = await read($, percent)
+      const costVal = await read($, costAtom)
+      const costValSmall = Math.round((costVal ?? 0) * 100) / 100
+      const text = `${tokensVal}/${windowVal} ${percentVal}% $${costValSmall.toFixed(2)}`
+      await $.ui.copy({ text, surface: e.surface })
+        .then(result => { if (!result.isCopied) $.ui.toast(`copy failed: ${result.reason}`) })
+        .catch(err => doError($, err))
+    }
+    return next(e)
+  }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
+  on('ui.message', { element: 'prompt' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
+    if ((e.data as { press?: boolean }).press === true) {
+      await $.command.run({ command: 'prompt', args: '' })
+        .catch(err => {
+          doError($, err)
+          $.ui.toast(`could not run /prompt: ${err instanceof Error ? err.message : String(err)}`)
+        })
     }
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
@@ -342,10 +376,13 @@ export const register: Register = on => {
             <Client key="extjs-dependency-report" module="./components/button.tsx" props={{ id: 'extjs-dependency-report', label: '/extjs-dependency-report', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-dependency-report' Skill` } satisfies ButtonProps} />
             <Client key="extjs-upgrade" module="./components/button.tsx" props={{ id: 'extjs-upgrade', label: '/extjs-upgrade', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-upgrade' Skill` } satisfies ButtonProps} />
             <Client key="reext-migrate" module="./components/button.tsx" props={{ id: 'reext-migrate', label: '/reext-migrate', dim: false, surface: e.surface, place: 'above', hint: `run the 'reext-migrate' Skill` } satisfies ButtonProps} />
+            <Client key="extjs-create" module="./components/button.tsx" props={{ id: 'extjs-create', label: '/extjs-create', dim: false, surface: e.surface, place: 'above', hint: `run the 'extjs-create' Skill` } satisfies ButtonProps} />
           </Box>
           <Box flexDirection="row" marginTop={1} marginRight={0} marginBottom={0} marginLeft={0}>
             <Client key="sencha" module="./components/button.tsx" props={{ id: 'sencha', label: 'show side pane', dim: false, surface: e.surface, place: 'above', hint: 'open the Sencha side pane' } satisfies ButtonProps} />
             <Client key="delete-v8" module="./components/button.tsx" props={{ id: 'delete-v8', label: 'delete v8 folder', dim: false, surface: e.surface, place: 'above', hint: 'run rm -rf v8 in the session folder' } satisfies ButtonProps} />
+            <Client key="copy-band" module="./components/button.tsx" props={{ id: 'copy-band', label: 'copy context', dim: false, surface: e.surface, place: 'above', hint: 'copy the context usage line to the clipboard' } satisfies ButtonProps} />
+            <Client key="prompt" module="./components/button.tsx" props={{ id: 'prompt', label: 'prompt', dim: false, surface: e.surface, place: 'above', hint: "run the '/prompt' command" } satisfies ButtonProps} />
           </Box>
           {/* <Box borderStyle='single'>
             <Box flexGrow={1}></Box>

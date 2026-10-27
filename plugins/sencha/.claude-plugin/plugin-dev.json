@@ -28,7 +28,7 @@
       "args": [
         "-y",
         "tsx",
-        "/Users/marcgusmano/@/vNext/MCPServers/src/ExtJSToolsMCPServer.ts"
+        "/Users/marcgusmano/@/vNext/MCP/extjs-tools/src/extjs-tools.ts"
       ],
       "env": {}
     },

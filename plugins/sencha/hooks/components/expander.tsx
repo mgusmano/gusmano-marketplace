@@ -183,11 +183,11 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 <Box width={3} flexShrink={0}>
                   <Text color={titleColor}>{` ${glyph}`}</Text>
                 </Box>
-                <Text color={titleColor} wrap="truncate">{sec.title}</Text>
+                <Text color={titleColor} wrap="wrap">{sec.title}</Text>
               </Box>
-              {sec.message ? <Box flexShrink={1} overflow="hidden"><Text color="white" wrap="truncate">{`${sec.message}`}</Text></Box> : null}
-              {sec.detail ? <Box flexShrink={1} overflow="hidden"><Text color="#c4b5fd" italic wrap="truncate">{` ${sec.detail}`}</Text></Box> : null}
-              {right ? <Text color={titleColor} dimColor wrap="truncate">{right}</Text> : null}
+              {sec.message ? <Box flexShrink={1} overflow="hidden"><Text color="white" wrap="wrap">{`${sec.message}`}</Text></Box> : null}
+              {sec.detail ? <Box flexShrink={1} overflow="hidden"><Text color="#c4b5fd" italic wrap="wrap">{` ${sec.detail}`}</Text></Box> : null}
+              {right ? <Text color={titleColor} dimColor wrap="wrap">{right}</Text> : null}
               <Box flexGrow={1} />
             </Box>
             {shown.map((it, i) => (
@@ -199,7 +199,7 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 backgroundColor={hoverOn(sec.id, 1 + i) ? props.hoverBg : undefined}
               >
                 <Box marginLeft={3} flexShrink={1} overflow="hidden">
-                  <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic} wrap="truncate">{it.text}</Text>
+                  <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic} wrap="wrap">{it.text}</Text>
                 </Box>
                 <Box flexGrow={1} />
                 {clipped ? <Text>{i >= barPos && i < barPos + barSize ? '┃' : '│'}</Text> : null}

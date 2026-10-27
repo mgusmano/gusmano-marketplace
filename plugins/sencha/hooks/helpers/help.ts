@@ -1,7 +1,7 @@
 // The about dialog: a pane opened from the header's about button, showing this description.
 export const HELP_PANE = 'sencha-help'
 
-export const HELP_MARKDOWN = `# Sencha AI Upgrade
+export const HELP_MARKDOWN = `# Sencha Claude Code Companion
 
 Sencha is a Claude Code mod for Ext JS work. It adds a header above the prompt and a side pane that lists each step as it runs.
 
