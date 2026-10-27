@@ -1,6 +1,6 @@
 {
   "name": "sencha",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "Sencha Claude Code Mod",
   "displayName": "Sencha",
   "types": "./types/index.d.ts",
@@ -49,14 +49,6 @@
         "-y",
         "tsx",
         "/Users/marcgusmano/@/vNext/MCP/extjs-ast-parser/src/extjs-ast-parser.ts"
-      ],
-      "env": {}
-    },
-    "extjs-example": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/MCPServers/dist/ExtJSExampleMCPServer.mjs"
       ],
       "env": {}
     }
