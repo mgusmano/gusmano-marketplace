@@ -469,7 +469,7 @@ function collectObjectPatternBindings (node, initialObjToBinding) {
     const binding = identifiers[bindingIndex];
 
     return node.id.properties
-        .filter(props => initialObjToBinding[binding].indexOf(props.key.name) > -1)
+        .filter(props => props.key && initialObjToBinding[binding].indexOf(props.key.name) > -1)
         .map(props => props.value.name);
 }
 

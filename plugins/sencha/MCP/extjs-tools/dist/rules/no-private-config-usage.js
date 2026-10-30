@@ -24,6 +24,7 @@ module.exports = {
     },
 
     create: function (context) {
+        console.error('aaa')
         return {
             Program () {
                 extjs.init(context);

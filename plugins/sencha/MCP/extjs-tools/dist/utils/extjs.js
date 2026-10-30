@@ -391,7 +391,7 @@ function isSubClass (className, parentClassName, version) {
 
 function isOverriddenExtClass (node) {
     const obj = this.getExtDefineObject(node);
-    return obj && obj.properties.find(o => o.key.name === 'override');
+    return obj && obj.properties.find(o => o.key && o.key.name === 'override');
 }
 
 function getOverriddenClassName (node, traverseToRoot) {
@@ -401,7 +401,7 @@ function getOverriddenClassName (node, traverseToRoot) {
         (utils.isMemberExpression(node) && (utils.isThisExpression(node.object) || utils.isIdentifierThisExpression(node.object)))
     ) {
         let obj = this.getExtDefineObject(node);
-        const overrideClsNode = obj && obj.properties.find(o => o.key.name === 'override');
+        const overrideClsNode = obj && obj.properties.find(o => o.key && o.key.name === 'override');
         let className = overrideClsNode && overrideClsNode.value.value;
 
         if (className) {
@@ -426,7 +426,7 @@ function getOverriddenClassName (node, traverseToRoot) {
 
 function isExtendedExtClass (node) {
     const obj = this.getExtDefineObject(node);
-    return obj && obj.properties.find(o => o.key.name === 'extend');
+    return obj && obj.properties.find(o => o.key && o.key.name === 'extend');
 }
 
 function getExtendedClassName (node, traverseToRoot) {
@@ -435,7 +435,7 @@ function getExtendedClassName (node, traverseToRoot) {
         (utils.isMemberExpression(node) && (utils.isThisExpression(node.object) || utils.isIdentifierThisExpression(node.object)))
     ) {
         let obj = this.getExtDefineObject(node);
-        const extendedClsNode = obj && obj.properties.find(o => o.key.name === 'extend');
+        const extendedClsNode = obj && obj.properties.find(o => o.key && o.key.name === 'extend');
         let className = extendedClsNode && extendedClsNode.value.value;
     
         if (className) {
@@ -740,7 +740,7 @@ function getExtClassConfig (node, version, includeUndocumented) {
                 (node.parent && node.parent.parent && utils.isArrayExpression(node.parent.parent)) && 
                 (node.parent.parent.parent && utils.isProperty(node.parent.parent.parent) && node.parent.parent.parent.key.name === 'fields')
             ) {
-                const fieldTypePropertyNode = node.parent.properties && node.parent.properties.find(o => o.key.name === 'type');
+                const fieldTypePropertyNode = node.parent.properties && node.parent.properties.find(o => o.key && o.key.name === 'type');
                 if (fieldTypePropertyNode && utils.isLiteral(fieldTypePropertyNode.value)) {
                     let fieldTypeClassObject;
                     if (version.indexOf('4') === 0) {
@@ -1722,15 +1722,15 @@ function getXTypeName (node) {
         if (node.key.name === 'xtype' || node.key.name === 'alias') {
             xtypeNode = node;
         } else if (!this.isExtDefine(node.parent.parent)) {
-            xtypeNode = node.parent.properties.find(o => o.key.name === 'xtype');
+            xtypeNode = node.parent.properties.find(o => o.key && o.key.name === 'xtype');
             if (!xtypeNode) {
-                xtypeNode = node.parent.properties.find(o => o.key.name === 'alias');
+                xtypeNode = node.parent.properties.find(o => o.key && o.key.name === 'alias');
             }
         }
     } else if (utils.isObjectExpression(node)) {
-        xtypeNode = node.properties.find(o => o.key.name === 'xtype');
+        xtypeNode = node.properties.find(o => o.key && o.key.name === 'xtype');
         if (!xtypeNode) {
-            xtypeNode = node.properties.find(o => o.key.name === 'alias');
+            xtypeNode = node.properties.find(o => o.key && o.key.name === 'alias');
         }
     }
 
@@ -1782,10 +1782,10 @@ function getXClassName (node) {
         if (node.key.name === 'xclass') {
             xclassNode = node;
         } else if (!this.isExtDefine(node.parent.parent)) {
-            xclassNode = node.parent.properties.find(o => o.key.name === 'xclass');
+            xclassNode = node.parent.properties.find(o => o.key && o.key.name === 'xclass');
         }
     } else if (utils.isObjectExpression(node)) {
-        xclassNode = node.properties.find(o => o.key.name === 'xclass');
+        xclassNode = node.properties.find(o => o.key && o.key.name === 'xclass');
     }
 
     if (xclassNode) {
