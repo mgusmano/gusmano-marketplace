@@ -1,4 +1,17 @@
-    [
+ 2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-custom` 
+      - rootPath=`<customRootPath>`
+      returning:
+      - rootHtml=`<customRootHtml>`
+      returning:
+      - `<foldersProcessed>`
+      - `<filesFixed>`
+      - `<foldersFailed>`
+      - `<augmentedFiles>`
+    * if a result=fail is returned, then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
+    * if result=success is returned, continue.
+ 
+ 
+ [
       {
         "extjs-tools": {
           "type": "stdio",

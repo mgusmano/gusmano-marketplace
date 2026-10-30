@@ -39,7 +39,7 @@ description: Determines Ext JS project details within a repository or workspace,
 
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
 1. Only run this branch 1 time.
-2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` 
+2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` run with exactly these 2 parameters always include progress=true
         - progress=true
         - rootPath=`<rootPath>`
         returning:
@@ -124,21 +124,29 @@ description: Determines Ext JS project details within a repository or workspace,
       * **Source Ext JS Theme (`<theme>`):** `<theme_name>`
 
 #### If `<projectType>` = `custom` (Custom application)
+* Load the custom SKILL.md at `<rootPath>`
+* Run the instructions in the custom SKILL.md
+    - return `<customData>` and `<customRootPath>` and `<customRootHtml>`
+* report `<customData>` and `<customRootPath>` and `<customRootHtml>`
 
-1. Run Model Context Protocol tool `extjs-tools_extjs-initilize-custom` 
-      - rootPath=`<rootPath>`
+* Run Model Context Protocol tool `extjs-custom-data` 
+      - customData=`<customData>`
       returning:
-      - `<foldersProcessed>`
-      - `<filesFixed>`
-      - `<foldersFailed>`
-      - `<augmentedFiles>`
+      - `<customData>`
+
     * if a result=fail is returned, then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
-    * if result=success is returned, continue.
-2. Verify Linting in Apps Folders
+    * if result=success is returned, then continue.
+
+* For each object in `<customData>` get the files array
+* for each src in the files array, call Run Model Context Protocol tool `extjs-lint-single-file` 
+      - filePath=`src`
+      - fromVersion="4.2.6"
+
+3. Verify Linting in Apps Folders
     * Read each file in `<augmentedFiles>` and find the text to the right of all `***ADDITIONAL MESSAGE:` markers.  For each found text read the text and confirm that the lint fix is conforms to the text - make needed fixes to the file if not correct - indicate with `// ***ADDITIONAL MESSAGE FIX IS IMPLEMENTED`.
-3. Update index.html
+4. Update index.html
     * update script and lint tags for the target SDK then make the needed updates - set target SDK folder to `<targetSDK>`
-4. Smoke test
+5. Smoke test
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Run Model Context Protocol tool `extjs-tools_sencha-web-start`
         - folderPath=`<targetRoot>`
@@ -150,7 +158,7 @@ description: Determines Ext JS project details within a repository or workspace,
     * Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetSDK>` resolve any runtime errors
       * If an error is resolved, repeat this step 11 - Smoke test. Continue until all errors are resolved.
     * Do not move to the next step until all errors are resolved.
-5. Cleanup
+6. Cleanup
     * Only start this step if all runtime errors are resolved.
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Run Model Contect Protocol tool `extjs-tools_extjs-prettier-all`
