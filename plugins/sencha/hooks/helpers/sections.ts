@@ -238,6 +238,7 @@ export function expanderHtml(): string {
   span.name.done { color: green; }
   span.name.fail { color: red; }
   td.output { white-space: pre-wrap; font-size: 0.6em; color: #b8860b; }
+  tr.output td { padding-top: 0; padding-bottom: 0; line-height: 1.2; }
   tr.parameter td { padding-top: 0; padding-bottom: 0; line-height: 1.2; }
   td.parameter { font-size: 0.7em; color: purple; overflow-wrap: anywhere; }
   td.parameter code { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -298,6 +299,7 @@ export function expanderHtml(): string {
       var row = el('tr', item.kind)
       var detail
       if (item.kind === 'parameter') {
+        // the parameters start expanded, so the button says Collapse
         if (!params.length) body.append(toggleLine('Parameters', params))
         detail = el('td', 'parameter')
         detail.append(el('code', '', item.text))
