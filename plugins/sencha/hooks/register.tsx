@@ -153,16 +153,17 @@ export const register: Register = on => {
     }
     let theResult;
     if (isProgress) {
-      $.ui.log(`isProgress ${isProgress}`)
+      //$.ui.log(`isProgress ${isProgress}`)
       // The tool's own result can arrive before its last progress lines. Keep polling until the
       // progress says it is done, so every line lands in this section before the next tool starts.
       const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`;
       const testGlobalGetName = 'test-global-get';
       const readProgress = async () => {
-        $.ui.log(`in readProgress`)
+        //$.ui.log(`in readProgress`)
         const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-        $.ui.log(`after tool call: ${testGlobalGetTool}`)
-        $.ui.log(`after tool call2: ${JSON.stringify(testGlobalGetResult)}`)
+        //$.ui.log(`after tool call: ${testGlobalGetTool}`)
+        //$.ui.log(`after tool call2: ${JSON.stringify(testGlobalGetResult)}`)
+        // mjg here we could get deny
         return JSON.parse(testGlobalGetResult.result[0].text).data as { name?: string }[]
       }
       // Count the server's list before this tool starts, so its leftover lines and "polling done" are skipped
