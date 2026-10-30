@@ -162,6 +162,7 @@ export const register: Register = on => {
         $.ui.log(`in readProgress`)
         const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
         $.ui.log(`after tool call: ${testGlobalGetTool}`)
+        $.ui.log(`after tool call2: ${JSON.stringify(testGlobalGetResult)}`)
         return JSON.parse(testGlobalGetResult.result[0].text).data as { name?: string }[]
       }
       // Count the server's list before this tool starts, so its leftover lines and "polling done" are skipped
