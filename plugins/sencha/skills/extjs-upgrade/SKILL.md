@@ -59,7 +59,8 @@ description: Determines Ext JS project details within a repository or workspace,
       a. Run Model Context Protocol tool `extjs-tools_sencha-app-build`
         - progress=true
         - cwd=`<appFolder>`
-      b. Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to debug and resolve any compilation errors,
+      b. Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to debug and resolve any compilation errors
+      c. When an error is resolved put a comment `//**UPGRADE FROM MODEL START**` above the resolution and put a comment `//**UPGRADE FROM MODEL END**` below the resolution
     * If an error is resolved, repeat starting at step 1. Start Server until all errrors are resolved.
 5. Dev Server & Smoke Test Validation
     * Do the following steps for each `<appFolder>` in `<sourceApps>` 
@@ -74,9 +75,11 @@ description: Determines Ext JS project details within a repository or workspace,
         - appPath=`<currentAppPath>`
         * to produce basic smoke test to find runtime errors. 
         * Never run puppeteer on its own - only use this Model Context Protocol tool.
-        * Fix any errors and rerun from the beginning of Smoke Test until no more errors.
+        * Resolve any errors and rerun from the beginning of Smoke Test until no more errors
+        c. When an error is resolved put a comment `//**UPGRADE FROM SMOKE TEST START**` above the resolution and put a comment `//**UPGRADE FROM SMOKE TEST END**` below the resolution 
       e. Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to resolve any runtime errors
       f. If an error is resolved, repeat starting at step 1a. Contonue until all errrors for `<appFolder>` are resolved.
+      g. When an error is resolved put a comment `//**UPGRADE FROM EXT SDK START**` above the resolution and put a comment `//**UPGRADE FROM EXT SDK END**` below the resolution 
     * Do not move to the next `<appFolder>` until all errrors are resolved.
 6. Cleanup and Documention Summary
     * Only start this step if all runtime errors are resolved.
@@ -90,7 +93,7 @@ description: Determines Ext JS project details within a repository or workspace,
         -Model Contect Protocol tool `extjs-tools_extjs-capture-logs-puppeteer` notes
         -residual warnings
     * Output the final path to `<targetRoot>/UPGRADE.md`.
-    * Do not outout any text summary, explain that the upgrate is now complete and that the summary is available in  `<name>/UPGRADE.md`
+    * Do not outout any text summary, explain that the upgrate is now complete and that the summary is available in  `<name>/UPGRADE.md`  
 7. Output Format
     * Return the final analysis in the following structured format:
       * **Source Project Type (`<projectType>`):** `senchaCmd` | `extGen` | `custom`
