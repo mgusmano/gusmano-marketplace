@@ -39,7 +39,8 @@ export function doError($: any, e: any, next?: { error?: { kind?: string; messag
   const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
   // JSON.stringify drops an Error's message, so show name and message for those
   const detail = e instanceof Error || typeof e?.message === 'string' ? `${e.name}: ${e.message}` : JSON.stringify(e)
-  $.ui.log(`doError error${why}: ${detail}`)
+  $.ui.log(`doError3 error${why}: ${detail}`)
+ // $.ui.log(`doError2 error:${JSON.stringify(next)}`)
 }
 
 function dataFor($: Parameters<Hook<'ui.render'>>[0], e: { component: string; props: any }) {

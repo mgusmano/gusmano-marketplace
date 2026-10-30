@@ -10,7 +10,7 @@ import { HoverHint } from './components/hoverhint'
 import { Header } from './components/header'
 import { HELP_PANE, HELP_MARKDOWN } from './helpers/help'
 import {
-  sections, expanderProps, expandAll, collapseAll, toggleSection, addItem, addSection,
+  sections, expanderProps, scrollSection, writeExpanderFile, expandAll, collapseAll, toggleSection, addItem, addSection,
   addItemToLatestSection, setSectionStatus, runTests,
 } from './helpers/sections'
 
@@ -115,7 +115,10 @@ export const register: Register = on => {
     const inner = hasCommandMessage ? e.text.slice(begin + 17, end).trim() : ''
     isExtjsPrompt = inner.startsWith('extjs')
     isReExtPrompt = inner.startsWith('reext')
-    const message = `hasCommandMessage: ${String(hasCommandMessage)} · isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)} · commandMessage: ${inner.slice(0, 60)}`
+    const parts: string[] = []
+    if (hasCommandMessage) parts.push(`command: ${inner.slice(0, 60)}`)
+    if (isExtjsPrompt || isReExtPrompt) parts.push(`isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)}`)
+    const message = parts.join(' · ')
     await addSection($, 'turn.start', message)
     startedAt = await $.clock.now()
     return next(e)
@@ -131,12 +134,13 @@ export const register: Register = on => {
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const message = `time: ${dur}`;
     await addSection($, 'turn.complete', message)
+    await writeExpanderFile($)
     const result = await next(e)
     return result;
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('tool.call', async ($, e, next) => {
-    $.ui.log(`tool.call ${JSON.stringify(e)}`)
+    //$.ui.log(`tool.call ${JSON.stringify(e)}`)
     const isProgress = 'progress' in e ? e.progress : undefined;
     let stop = false;
     let out: any;
@@ -223,21 +227,29 @@ export const register: Register = on => {
   // expander messages
   on('ui.message', { element: 'expander' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     const data = e.data as {
+      log?: string
       toggle?: { section: string; open: boolean }
+      scroll?: { section: string; offset: number }
+    }
+    if (data?.log !== undefined) {
+      $.ui.log(data.log)
+      return next(e)
     }
     if (data?.toggle) {
       toggleSection(data.toggle.section, data.toggle.open)
+      return { props: expanderProps() }
+    }
+    if (data?.scroll) {
+      scrollSection(data.scroll.section, data.scroll.offset)
       return { props: expanderProps() }
     }
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   // test messages
-  on('ui.message', { element: 'toggle' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
+  on('ui.message', { element: 'test' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     if ((e.data as { press?: boolean }).press === true) {
-      const all = sections().length > 0 && sections().every(s => s.expanded)
-      if (all) collapseAll($)
-      else expandAll($)
+      void runTests($).catch(err => doError($, err))
     }
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
@@ -256,12 +268,15 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
-  on('ui.message', { element: 'test' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
+  on('ui.message', { element: 'toggle' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     if ((e.data as { press?: boolean }).press === true) {
-      void runTests($).catch(err => doError($, err))
+      const all = sections().length > 0 && sections().every(s => s.expanded)
+      if (all) collapseAll($)
+      else expandAll($)
     }
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
 
   // AbovePrompt messages
   on('ui.message', { element: 'extjs-upgrade' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
@@ -506,7 +521,8 @@ export const register: Register = on => {
     catch (error) {
       return (<Text>register Error</Text>)
     }
-  }).catch(($, e, next) => { doError($, e, next); return next(e) });
+    }).catch(($, e, next) => { doError($, e, next); return next(e) });
+  //}).catch(($, e, next) => { doError($, e, next); });
 
   on('ui.render', { component: 'Pane', requestId: HELP_PANE }, async ($, e, next) => {
     const { Box, Markdown } = $.ui.resolve(e)

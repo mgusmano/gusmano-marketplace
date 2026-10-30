@@ -6,7 +6,7 @@ description: Determines Ext JS project details within a repository or workspace,
 # Ext JS Upgrade Expert
 
 ## Core Rules
-* At the start of every task, output a structured status box or checklist using markdown code blocks so the progress is explicitly visible in the terminal. If available, use ToDos or todowrite or todowrite Model Context Protocol tool to document progress
+* At the start of every task, output a update_plan or structured status box or checklist using markdown code blocks so the progress is explicitly visible in the terminal. If available, use ToDos or todowrite or todowrite or update_plan Model Context Protocol tool to document progress.  For update_plan always provide a scope.
 * **Constraint**: Leave unrelated code untouched
 * **Thinking**: Be terse when creating and outputting thinking/thought tokens
 * **Model Context Protocol Tools**: Always call Model Context Protocol Tools directly via Model Context Protocol, never via Bash or Terminal. 
