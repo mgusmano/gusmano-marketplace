@@ -212,7 +212,7 @@ export function expanderData() {
       ? { kind: 'output', text: i }
       : i.italic === true
         ? { kind: 'parameter', text: prettyParam(i.text) }
-        : { kind: 'output', text: i.text })),
+        : { kind: 'output', text: prettyParam(i.text) })),
   }))
 }
 

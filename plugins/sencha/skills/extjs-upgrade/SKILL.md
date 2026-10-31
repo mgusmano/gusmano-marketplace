@@ -13,7 +13,7 @@ description: Determines Ext JS project details within a repository or workspace,
 * **Continue**: Continue through the entire skill without asking.
 * **Constraint**: Use ToDos or todowrite Model Context Protocol tool to document progress
 * **Path Definition**:
-  * `<rootPath>` = current / root path
+  * `<rootPath>` = the full root path of the project
   * `<sourceRoot>` = Folder containing the application to be upgraded
   * `<targetRoot>` = Folder containing the newly created v8 application
   * `<targetSDK>` = Folder containing the ExtJS Version 8 SDK files
@@ -29,6 +29,7 @@ description: Determines Ext JS project details within a repository or workspace,
 2. **Detect Which Project Type (`<projectType>`)**
     * Run Model Context Protocol tool `extjs-project-type`
         - folderPath=`<sourceRoot>`
+        
         returning: 
         - `<projectType>`
         - `<toolkit>`
@@ -38,11 +39,13 @@ description: Determines Ext JS project details within a repository or workspace,
 3. **Branching Execution**
 
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
-1. Only run this branch 1 time.
-2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` run with exactly these 2 parameters always include progress=true
+* Only run this branch 1 time.
+    * Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` run with exactly these 2 parameters, always include progress=true
         - progress=true
-        - rootPath=`<rootPath>`
+        - rootPath = `<rootPath>` the full root path of the project - NOT `<sourceRoot>`
+
         returning:
+
         - `<sourceRoot>` 
         - `<sourceApps>`
         - `<sourcePackages>`

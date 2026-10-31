@@ -85,20 +85,22 @@ export const register: Register = on => {
   let hoverHints: Partial<Record<'above' | 'pane', string>> = {}
 
   on('session.start', async ($, e, next) => {
-    //$.ui.log(`session.start ${e.cwd}`)
-    //$.ui.log(`session.start:e ${JSON.stringify(e)}`)
-    //$.ui.log(`session.start:next ${JSON.stringify(next)}`)
+    $.ui.log(`session.start:e ${JSON.stringify(e)}`)
+
+
     //$.ui.log(`env ${await $.env.get('CLAUDE_CODE_DEBUG_LOGS_DIR')}`)
-    //   $.ui.log(`$.plugin.name ${$.plugin.name}`)
-    //  $.ui.log(`$.plugin.root ${$.plugin.root}`)
+    // $.ui.log(`$.plugin.name ${$.plugin.name}`)
+    //$.ui.log(`$.plugin.root ${$.plugin.root}`)
 
     //$.telemetry.log
+    //  let model = $.
+    //  $.ui.log(`session.start:model ${JSON.stringify(model)}`)
 
-    // await logList($, 'tool')
-    // await logList($, 'command')
-    // await logList($, 'config')
-    // await logList($, 'agent')
-    // await logList($, 'fs')
+    //await logList($, 'tool')
+    //await logList($, 'command')
+    //await logList($, 'config')
+    //await logList($, 'agent')
+    //await logList($, 'fs')
 
     await refresh($)
     sessionCwd = e.cwd
@@ -150,7 +152,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('turn.start', async ($, e, next) => {
-    //$.ui.log(`turn.start ${JSON.stringify(e)}`)
+    $.ui.log(`turn.start ${JSON.stringify(e)}`)
 
     let hasCommandMessage = false
     let isExtjsPrompt = false
@@ -183,7 +185,9 @@ export const register: Register = on => {
     await addSection($, 'turn.start', message)
 
     startedAt = await $.clock.now()
-    return next(e)
+    const nextE = await next(e)
+    $.ui.log(`turn.start:nextE ${JSON.stringify(nextE)}`)
+    return nextE
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('turn.step', async function* (_, e, next) {
@@ -195,16 +199,23 @@ export const register: Register = on => {
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const message = `time: ${dur}`;
+
+    const result = await next(e)
+    // $.ui.log(`turn.complete:e ${JSON.stringify(e)}`)
+    // $.ui.log(`turn.complete:result ${JSON.stringify(result)}`)
+
     await addSection($, 'turn.complete', message)
+    const usage = `${'usage'}: ${JSON.stringify(result?.usage)}`
+    $.ui.log(usage)
+    await addItemToLatestSection($, usage, '#c4b5fd')
+
     if (isExtJSUpgrade === true) {
       await writeExpanderFile($)
     }
     else {
       $.ui.log(`expander file not written`)
     }
-    const result = await next(e)
-    //$.ui.log(`turn.complete:e ${JSON.stringify(e)}`)
-    //$.ui.log(`turn.complete:result ${JSON.stringify(result)}`)
+
     return result;
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
