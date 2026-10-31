@@ -121,8 +121,8 @@ const handlers = {
 }
 
 const logTest = (input) => {
-  const logFile = process.env.GENERIC_HOOK_LOG ?? join(input.cwd ?? process.cwd(), '.hook-events.jsonl')
-  appendFileSync(logFile, input + '\n')
+  //const logFile = process.env.GENERIC_HOOK_LOG ?? join(input.cwd ?? process.cwd(), '.hook-events.jsonl')
+  //appendFileSync(logFile, input + '\n')
 }
 
 // try {
