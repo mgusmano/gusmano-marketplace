@@ -1,0 +1,28 @@
+# Codex: add to ~/.codex/config.toml or <repo>/.codex/config.toml.
+# Replace /ABSOLUTE/PATH with the folder that holds handler.mjs. Codex has no plugin root variable.
+# Shape taken from the Codex hooks docs; confirm the event names against them.
+
+[[hooks.SessionStart]]
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "node /ABSOLUTE/PATH/handler.mjs session.start"
+
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = "node /ABSOLUTE/PATH/handler.mjs turn.start"
+
+[[hooks.PreToolUse]]
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "node /ABSOLUTE/PATH/handler.mjs tool.before"
+
+[[hooks.PostToolUse]]
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "node /ABSOLUTE/PATH/handler.mjs tool.after"
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = "node /ABSOLUTE/PATH/handler.mjs turn.end"

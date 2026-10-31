@@ -85,7 +85,7 @@ export const register: Register = on => {
   let hoverHints: Partial<Record<'above' | 'pane', string>> = {}
 
   on('session.start', async ($, e, next) => {
-    $.ui.log(`session.start:e ${JSON.stringify(e)}`)
+    //$.ui.log(`session.start:e ${JSON.stringify(e)}`)
 
 
     //$.ui.log(`env ${await $.env.get('CLAUDE_CODE_DEBUG_LOGS_DIR')}`)
@@ -152,7 +152,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('turn.start', async ($, e, next) => {
-    $.ui.log(`turn.start ${JSON.stringify(e)}`)
+    //$.ui.log(`turn.start ${JSON.stringify(e)}`)
 
     let hasCommandMessage = false
     let isExtjsPrompt = false
@@ -186,7 +186,7 @@ export const register: Register = on => {
 
     startedAt = await $.clock.now()
     const nextE = await next(e)
-    $.ui.log(`turn.start:nextE ${JSON.stringify(nextE)}`)
+    //$.ui.log(`turn.start:nextE ${JSON.stringify(nextE)}`)
     return nextE
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
@@ -206,7 +206,7 @@ export const register: Register = on => {
 
     await addSection($, 'turn.complete', message)
     const usage = `${'usage'}: ${JSON.stringify(result?.usage)}`
-    $.ui.log(usage)
+    //$.ui.log(usage)
     await addItemToLatestSection($, usage, '#c4b5fd')
 
     if (isExtJSUpgrade === true) {

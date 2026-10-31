@@ -1,3 +1,22 @@
+ {
+  "modules": [
+    "register.tsx"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks-handlers/on-session-start.ts\""
+          }
+        ]
+      }
+    ]
+  }
+}
+ 
+ 
  2. Run Model Context Protocol tool `extjs-tools_extjs-initilize-custom` 
       - rootPath=`<customRootPath>`
       returning:
