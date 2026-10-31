@@ -1,6 +1,6 @@
 {
   "name": "sencha",
-  "version": "0.0.42",
+  "version": "0.0.44",
   "description": "Sencha Claude Code Mod",
   "displayName": "Sencha",
   "types": "./types/index.d.ts",

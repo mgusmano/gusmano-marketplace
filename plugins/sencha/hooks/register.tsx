@@ -17,10 +17,24 @@ import {
 const spaces = 0
 
 export type Fill = number | null
-const percent = atom({ plugin: 'sencha', key: 'percent' } as const, null)
-const tokens = atom({ plugin: 'sencha', key: 'tokens' } as const, null)
-const window = atom({ plugin: 'sencha', key: 'window' } as const, null)
+const percentAtom = atom({ plugin: 'sencha', key: 'percent' } as const, null)
+const tokensAtom = atom({ plugin: 'sencha', key: 'tokens' } as const, null)
+const windowAtom = atom({ plugin: 'sencha', key: 'window' } as const, null)
 const costAtom = atom({ plugin: 'sencha', key: 'cost' } as const, null)
+
+let isExtJSUpgrade = false;
+
+const footerText = async ($: EngineInterface): Promise<string> => {
+  const formatCount = (value: number | null | undefined): string => (value ?? 0).toLocaleString('en-US')
+  const tokensVal = await read($, tokensAtom)
+  const tokensValFormatted = formatCount(tokensVal)
+  const windowVal = await read($, windowAtom)
+  const windowValFormatted = formatCount(windowVal)
+  const percentVal = await read($, percentAtom)
+  const costVal = await read($, costAtom)
+  const costValSmall = Math.round((costVal ?? 0) * 100) / 100
+  return `${tokensValFormatted}/${windowValFormatted} (${percentVal}%) $${costValSmall.toFixed(2)}`
+}
 
 // Reads the live window's fill into the atom; the write redraws the band.
 // Never throws: a failed read must not hold up the prompt it gates.
@@ -36,13 +50,13 @@ const refresh = async ($: EngineInterface) => {
     let fill: Fill;
 
     fill = context.tokens ?? null
-    await update($, tokens, () => fill)
+    await update($, tokensAtom, () => fill)
 
     fill = context.window ?? null
-    await update($, window, () => fill)
+    await update($, windowAtom, () => fill)
 
     fill = context.percent ?? null
-    await update($, percent, () => fill)
+    await update($, percentAtom, () => fill)
 
     fill = cost?.usd ?? null
     await update($, costAtom, () => fill)
@@ -52,6 +66,19 @@ const refresh = async ($: EngineInterface) => {
   }
 }
 
+// Logs every row a host list reports, one ui.log line per row, prefixed with its kind.
+const logList = async ($: EngineInterface, kind: 'tool' | 'command' | 'config' | 'agent' | 'fs') => {
+  let rows: unknown[] = []
+  switch (kind) {
+    case 'tool': rows = await $.tool.list(); break
+    case 'command': rows = await $.command.list(); break
+    case 'config': rows = await $.config.list(); break
+    case 'agent': rows = await $.agent.list(); break
+    case 'fs': rows = await $.fs.list(); break
+  }
+  for (const row of rows) $.ui.log(`${kind} ${JSON.stringify(row)}`)
+}
+
 export const register: Register = on => {
   let startedAt = 0
   let sessionCwd = ''
@@ -59,6 +86,20 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     //$.ui.log(`session.start ${e.cwd}`)
+    //$.ui.log(`session.start:e ${JSON.stringify(e)}`)
+    //$.ui.log(`session.start:next ${JSON.stringify(next)}`)
+    //$.ui.log(`env ${await $.env.get('CLAUDE_CODE_DEBUG_LOGS_DIR')}`)
+    //   $.ui.log(`$.plugin.name ${$.plugin.name}`)
+    //  $.ui.log(`$.plugin.root ${$.plugin.root}`)
+
+    //$.telemetry.log
+
+    // await logList($, 'tool')
+    // await logList($, 'command')
+    // await logList($, 'config')
+    // await logList($, 'agent')
+    // await logList($, 'fs')
+
     await refresh($)
     sessionCwd = e.cwd
     await $.command.register({ name: 'sencha', description: 'open the Sencha side pane' })
@@ -102,10 +143,15 @@ export const register: Register = on => {
   on('prompt.submit', async ($, e, next) => {
     await refresh($)
     await addSection($, 'prompt.submit', e.text)
+    if (e.text === '/extjs-upgrade') {
+      isExtJSUpgrade = true;
+    }
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('turn.start', async ($, e, next) => {
+    //$.ui.log(`turn.start ${JSON.stringify(e)}`)
+
     let hasCommandMessage = false
     let isExtjsPrompt = false
     let isReExtPrompt = false
@@ -118,8 +164,24 @@ export const register: Register = on => {
     const parts: string[] = []
     if (hasCommandMessage) parts.push(`command: ${inner.slice(0, 60)}`)
     if (isExtjsPrompt || isReExtPrompt) parts.push(`isExtjsProject: ${String(isExtjsPrompt)} · isReExtPrompt: ${String(isReExtPrompt)}`)
-    const message = parts.join(' · ')
+    let message = parts.join(' · ')
+    // if (message === '') {
+    //   message = e.turnId;
+    // }
+    try {
+      let surfaces = await $.session.surfaces()
+      if (surfaces.length === 0) {
+        message = 'no surfaces'
+      }
+      else {
+        message = JSON.stringify(surfaces)
+      }
+    }
+    catch (error: any) {
+      message = error.toString()
+    }
     await addSection($, 'turn.start', message)
+
     startedAt = await $.clock.now()
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
@@ -134,8 +196,15 @@ export const register: Register = on => {
     const dur = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
     const message = `time: ${dur}`;
     await addSection($, 'turn.complete', message)
-    await writeExpanderFile($)
+    if (isExtJSUpgrade === true) {
+      await writeExpanderFile($)
+    }
+    else {
+      $.ui.log(`expander file not written`)
+    }
     const result = await next(e)
+    //$.ui.log(`turn.complete:e ${JSON.stringify(e)}`)
+    //$.ui.log(`turn.complete:result ${JSON.stringify(result)}`)
     return result;
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
@@ -168,6 +237,8 @@ export const register: Register = on => {
         //$.ui.log(`after tool call: ${testGlobalGetTool}`)
         //$.ui.log(`after tool call2: ${JSON.stringify(testGlobalGetResult)}`)
         // mjg here we could get deny
+        //await addItemToLatestSection($, `${JSON.stringify(testGlobalGetResult)}`, '#e64e4e', true)
+        //await addItemToLatestSection($, `testGlobalGetResult here...`, '#e64e4e', true)
         return JSON.parse(testGlobalGetResult.result[0].text).data as { name?: string }[]
       }
       // Count the server's list before this tool starts, so its leftover lines and "polling done" are skipped
@@ -183,7 +254,7 @@ export const register: Register = on => {
         // safety: if the progress never says done, stop a few polls after the tool's own result
         if (theResult !== undefined && ++pollsAfterResult >= 3) stop = true
         if (stop) break
-        await $.clock.sleep(500)
+        //await $.clock.sleep(500)
       }
       await out
     }
@@ -326,12 +397,7 @@ export const register: Register = on => {
 
   on('ui.message', { element: 'copy-band' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     if ((e.data as { press?: boolean }).press === true) {
-      const tokensVal = await read($, tokens)
-      const windowVal = await read($, window)
-      const percentVal = await read($, percent)
-      const costVal = await read($, costAtom)
-      const costValSmall = Math.round((costVal ?? 0) * 100) / 100
-      const text = `${tokensVal}/${windowVal} ${percentVal}% $${costValSmall.toFixed(2)}`
+      const text = await footerText($)
       await $.ui.copy({ text, surface: e.surface })
         .then(result => { if (!result.isCopied) $.ui.toast(`copy failed: ${result.reason}`) })
         .catch(err => doError($, err))
@@ -366,11 +432,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const tokensVal = await read($, tokens)
-    const windowVal = await read($, window)
-    const percentVal = await read($, percent)
-    const costVal = await read($, costAtom)
-    const costValSmall = Math.round((costVal ?? 0) * 100) / 100
+    const footer = await footerText($)
 
     if (e.surface === 'desktop' || e.surface === 'terminal') {
       const ui = $.ui.resolve(e)
@@ -405,10 +467,10 @@ export const register: Register = on => {
             <Client key="copy-band" module="./components/button.tsx" props={{ id: 'copy-band', label: 'copy context', dim: false, surface: e.surface, place: 'above', hint: 'copy the context usage line to the clipboard' } satisfies ButtonProps} />
             <Client key="prompt" module="./components/button.tsx" props={{ id: 'prompt', label: 'prompt', dim: false, surface: e.surface, place: 'above', hint: "run the '/prompt' command" } satisfies ButtonProps} />
           </Box>
-          {/* <Box borderStyle='single'>
+          <Box>
             <Box flexGrow={1}></Box>
-            <Text color="#fb923c">{tokensVal}/{windowVal} {percentVal}% ${costValSmall.toFixed(2)}</Text>
-          </Box> */}
+            <Text size="caption" color="#fb923c" dimColor>{footer}</Text>
+          </Box>
           {beneath}
         </Box>
       )
@@ -426,6 +488,8 @@ export const register: Register = on => {
 
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
+  //    size?: "caption" | "footnote" | "body" | "heading" | "title";
 
   // Pane messages
   on('ui.message', { element: 'clear' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
@@ -509,11 +573,11 @@ export const register: Register = on => {
       }
 
       if (e.surface === 'vscode') {
-        return (<Text>vscode</Text>)
+        return (<Text>vscode not yet suppoeted</Text>)
       }
 
       if (e.surface === 'mobile') {
-        return (<Text>mobile</Text>)
+        return (<Text>mobile not yet supported</Text>)
       }
 
       return next(e)
@@ -521,8 +585,7 @@ export const register: Register = on => {
     catch (error) {
       return (<Text>register Error</Text>)
     }
-    }).catch(($, e, next) => { doError($, e, next); return next(e) });
-  //}).catch(($, e, next) => { doError($, e, next); });
+  }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('ui.render', { component: 'Pane', requestId: HELP_PANE }, async ($, e, next) => {
     const { Box, Markdown } = $.ui.resolve(e)

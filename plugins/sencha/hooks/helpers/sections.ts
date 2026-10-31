@@ -232,7 +232,7 @@ export function expanderHtml(): string {
   th, td { text-align: left; vertical-align: top; padding: 0.25rem 0.75rem; }
   thead th { border-bottom: 2px solid #888; }
   tr.section td { border-top: 1px solid #ccc; padding-top: 0.6rem; padding-bottom: 0; }
-  tr:has(+ tr.section) td { padding-bottom: 0.6rem; }
+  tr:has(+ tr.section):not(.toggle-line) td { padding-bottom: 0.6rem; }
   td.title { font-weight: bold; white-space: nowrap; width: 1%; font-size: 0.8em; }
   td.meta { font-style: italic; font-size: 0.7em; }
   span.name.done { color: green; }
@@ -326,6 +326,7 @@ export async function writeExpanderFile($: any, base = `expander-${stamp(new Dat
   try {
     // absolute, in the session's own folder: a relative path would land in the plugin's folder
     const dir = await $.session.cwd()
+    $.ui.log(`expander file: ${dir}/${base}.html`)
     //await $.fs.write(`${dir}/${base}.txt`, expanderText())
     //await $.fs.write(`${dir}/${base}.md`, expanderMarkdown())
     await $.fs.write(`${dir}/${base}.html`, expanderHtml())
