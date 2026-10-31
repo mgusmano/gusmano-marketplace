@@ -233,6 +233,8 @@ export function expanderHtml(): string {
   thead th { border-bottom: 2px solid #888; }
   tr.section td { border-top: 1px solid #ccc; padding-top: 0.6rem; padding-bottom: 0; }
   tr:has(+ tr.section):not(.toggle-line) td { padding-bottom: 0.6rem; }
+  tr.toggle-line + tr.section td { padding-top: 0; }
+  tr.toggle-line:has(+ tr.output[hidden]) td { padding-bottom: 0.6rem; }
   td.title { font-weight: bold; white-space: nowrap; width: 1%; font-size: 0.8em; }
   td.meta { font-style: italic; font-size: 0.7em; }
   span.name.done { color: green; }
