@@ -38,9 +38,16 @@ description: Determines Ext JS project details within a repository or workspace,
 
 3. **Branching Execution**
 
+#### If `<projectType>` = `custom` (Custom application)
+* Follow the steps in `custom-project.md` in this skill's directory.
+* set `<name>` to  `<response>`[0].html
+* after finishing, AskAQuestion Should the source code in `<name>` be displayed?
+* if yes, read the data and display as a separate code structure block in the output
+
+
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
 * Only run this branch 1 time.
-    * Run Model Context Protocol tool `extjs-tools_extjs-initilize-with-sencha-cmd` run with exactly these 2 parameters, always include progress=true
+    * MUST be run as a shell command: `extjs-tools_extjs-initilize-with-sencha-cmd`, with exactly these 2 parameters, always include progress=true
         - progress=true
         - rootPath = `<rootPath>` the full root path of the project - NOT `<sourceRoot>`
 
@@ -81,10 +88,15 @@ description: Determines Ext JS project details within a repository or workspace,
         * Resolve any errors and rerun from the beginning of Smoke Test until no more errors
         c. When an error is resolved put a comment `//**UPGRADE FROM SMOKE TEST START**` above the resolution and put a comment `//**UPGRADE FROM SMOKE TEST END**` below the resolution 
       e. Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to resolve any runtime errors
-      f. If an error is resolved, repeat starting at step 1a. Contonue until all errrors for `<appFolder>` are resolved.
+      f. If an error is resolved, repeat starting at step 1a. Continue until all errors for `<appFolder>` are resolved.
       g. When an error is resolved put a comment `//**UPGRADE FROM EXT SDK START**` above the resolution and put a comment `//**UPGRADE FROM EXT SDK END**` below the resolution 
-    * Do not move to the next `<appFolder>` until all errrors are resolved.
-6. Cleanup and Documention Summary
+          * Do not move to the next `<appFolder>` until all errors are resolved.
+6. for all 404 errors - Failed to load resource: the server responded with a status of 404 (Not Found)
+    * create backend servers for each needed port / 404 error using nodejs and include all backend ports as dummy/test ports so that the frontend can be tested - use the ports the frontend code uses. 
+    * deliver each backend server as a separate nodejs process and run them in the background so that the frontend can be tested.
+    * create trhe backend servers in `<targetRoot>/extjs-upgrade-backend-servers` and include a README.md file with instructions on how to run the backend servers.
+
+7. Cleanup and Documention Summary
     * Only start this step if all runtime errors are resolved.
     * Run Model Contect Protocol tool `extjs-tools_extjs-prettier-all`
         - folderPath=`<targetRoot>`
@@ -129,7 +141,20 @@ description: Determines Ext JS project details within a repository or workspace,
       * **Source Ext JS Toolkit (`<toolkit>`):** `classic` | `modern` | `unknown`
       * **Source Ext JS Theme (`<theme>`):** `<theme_name>`
 
-#### If `<projectType>` = `custom` (Custom application)
+
+
+#### If `<projectType>` = `custom2` (Custom application)
+* **Invoke custom data tool**
+    * set `<data>` to the following JSON array (keep it valid JSON):
+    ```json
+    [
+      { "html": "/Users/demo/upgrade/Huge/hugerun/current/wab/aaak/frmDMDebtorsSearch.csp" }
+    ]
+    ```
+   * call `mcp__plugin_sencha_extjs-tools__custom` (load its schema with ToolSearch first if it is deferred)
+   * pass `data` set to the value of `<data>`, as a JSON string
+   * report the tool's response as a JSON code structure
+
 * Load the custom SKILL.md at `<rootPath>`
 * Run the instructions in the custom SKILL.md
     - return `<customData>` and `<customRootPath>` and `<customRootHtml>`

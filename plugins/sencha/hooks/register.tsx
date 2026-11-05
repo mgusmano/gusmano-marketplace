@@ -221,7 +221,14 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     //$.ui.log(`tool.call ${JSON.stringify(e)}`)
-    const isProgress = 'progress' in e ? e.progress : undefined;
+    //const isProgress = 'progress' in e ? e.progress : undefined;
+    let isProgress = false;
+    if (e.tool === `mcp__plugin_sencha_extjs-tools__sencha-app-watch`) {
+      isProgress = true;
+    }
+    if ('progress' in e) {
+      isProgress = true;
+    }
     let stop = false;
     let out: any;
     let detail: string | undefined
@@ -263,7 +270,10 @@ export const register: Register = on => {
         await appendLines($, data)
         if (progressFinished(data)) polledDone = true
         // safety: if the progress never says done, stop a few polls after the tool's own result
-        if (theResult !== undefined && ++pollsAfterResult >= 3) stop = true
+        if (theResult !== undefined && ++pollsAfterResult >= 3) {
+          //$.ui.log(`theResult ${theResult}`)
+          stop = true
+        }
         if (stop) break
         //await $.clock.sleep(500)
       }

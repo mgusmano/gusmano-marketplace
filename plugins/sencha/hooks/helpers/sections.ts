@@ -149,7 +149,7 @@ export function expanderText(): string {
 // local time as YYYY-MM-DD-HH:MM:SS
 const stamp = (d: Date) => {
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`
 }
 
 // a new file per write, named by when it was written; earlier files are left alone
@@ -188,17 +188,29 @@ export function expanderMarkdown(): string {
 // the sections as plain data: the same fields the text and Markdown files show
 // a parameter whose value is an array or object, as `key: {json}`, laid out one property per line
 // with the brackets on their own lines; anything else is returned as it is
-const prettyParam = (text: string) => {
-  const at = text.indexOf(': ')
-  if (at < 0) return text
+// the text as pretty JSON when it is an object or array, otherwise undefined.
+// A JSON string that itself holds an object or array (a value sent already encoded) is unwrapped once.
+const prettyJson = (text: string): string | undefined => {
   try {
-    const value = JSON.parse(text.slice(at + 2))
-    if (value === null || typeof value !== 'object') return text
-    return `${text.slice(0, at + 2)}${JSON.stringify(value, null, 2)}`
+    let value = JSON.parse(text)
+    if (typeof value === 'string') value = JSON.parse(value)
+    if (value === null || typeof value !== 'object') return undefined
+    return JSON.stringify(value, null, 2)
   }
   catch {
-    return text
+    return undefined
   }
+}
+
+const prettyParam = (text: string) => {
+  // the whole text first: an unlabelled array or object has ': ' inside it, so splitting would cut it apart
+  const whole = prettyJson(text)
+  if (whole !== undefined) return whole
+  // otherwise a `key: {json}` or `key: [json]` line, the label kept as it is
+  const at = text.indexOf(': ')
+  if (at < 0) return text
+  const body = prettyJson(text.slice(at + 2))
+  return body === undefined ? text : `${text.slice(0, at + 2)}${body}`
 }
 
 export function expanderData() {
@@ -209,7 +221,7 @@ export function expanderData() {
     detail: s.detail ?? '',
     subject: s.subject ?? '',
     items: (s.items ?? []).map(i => (typeof i === 'string'
-      ? { kind: 'output', text: i }
+      ? { kind: 'output', text: prettyParam(i) }
       : i.italic === true
         ? { kind: 'parameter', text: prettyParam(i.text) }
         : { kind: 'output', text: prettyParam(i.text) })),
@@ -244,14 +256,23 @@ export function expanderHtml(): string {
   tr.parameter td { padding-top: 0; padding-bottom: 0; line-height: 1.2; }
   td.parameter { font-size: 0.7em; color: purple; overflow-wrap: anywhere; }
   td.parameter code { white-space: pre-wrap; overflow-wrap: anywhere; }
-  header.page { display: flex; justify-content: space-between; align-items: baseline; }
-  header.page h1 { margin: 0 0 1rem; font-size: 1.5em; }
+  header.page { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  header.page h1 { margin: 0; font-size: 1.5em; }
+  div.titles { display: flex; align-items: center; gap: 0.75rem; }
+  span.actions { display: flex; gap: 0.4rem; }
   button.toggle { font-family: inherit; font-size: 0.6em; margin-left: 0; padding: 0 0.4em; border: 1px solid #ccc; border-radius: 3px; background: #f2f2f2; color: inherit; cursor: pointer; }
+  button.all { font-size: 0.75em; padding: 0.15em 0.6em; }
 </style>
 </head>
 <body>
 <header class="page">
-  <h1>Sencha Claude Code Companion</h1>
+  <div class="titles">
+    <h1>Sencha Claude Code Companion</h1>
+    <span class="actions">
+      <button type="button" class="toggle all" id="expand-all">Expand All</button>
+      <button type="button" class="toggle all" id="collapse-all">Collapse All</button>
+    </span>
+  </div>
   <span class="run-date">${ran}</span>
 </header>
 <table>
@@ -262,6 +283,8 @@ export function expanderHtml(): string {
 <script>
   var data = JSON.parse(document.getElementById('expander-data').textContent)
   var body = document.getElementById('rows')
+  // every kind-of-rows control on the page, so the header's Expand All / Collapse All can reach them
+  var groups = []
   function el(tag, cls, text) {
     var e = document.createElement(tag)
     if (cls) e.className = cls
@@ -283,14 +306,19 @@ export function expanderHtml(): string {
     var outputs = []
     // a row of its own holding the control for the rows given, above the first of them
     function toggleLine(label, rows, startCollapsed) {
-      var collapsed = !!startCollapsed
-      var button = el('button', 'toggle', label + (collapsed ? ': Expand' : ': Collapse'))
+      var button = el('button', 'toggle')
       button.type = 'button'
-      button.addEventListener('click', function () {
-        collapsed = !collapsed
-        button.textContent = label + (collapsed ? ': Expand' : ': Collapse')
-        rows.forEach(function (r) { r.hidden = collapsed })
-      })
+      var group = {
+        collapsed: false,
+        set: function (collapsed) {
+          group.collapsed = collapsed
+          button.textContent = label + (collapsed ? ': Expand' : ': Collapse')
+          rows.forEach(function (r) { r.hidden = collapsed })
+        }
+      }
+      group.set(!!startCollapsed)
+      button.addEventListener('click', function () { group.set(!group.collapsed) })
+      groups.push(group)
       var line = el('tr', 'toggle-line')
       var lineDetail = el('td', '')
       lineDetail.append(button)
@@ -317,6 +345,12 @@ export function expanderHtml(): string {
       body.append(row)
     })
   })
+  // the header's buttons: every parameters and output control on the page, all at once
+  function setAll(collapsed) {
+    groups.forEach(function (g) { g.set(collapsed) })
+  }
+  document.getElementById('expand-all').addEventListener('click', function () { setAll(false) })
+  document.getElementById('collapse-all').addEventListener('click', function () { setAll(true) })
 </script>
 </body>
 </html>

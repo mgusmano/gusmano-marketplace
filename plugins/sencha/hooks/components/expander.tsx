@@ -3,7 +3,7 @@ import type { ClientModule, RenderElement } from 'claude-code'
 import { CHEVRON_CLOSED, CHEVRON_OPEN, CIRCLE_FILLED, CIRCLE_NERD } from './icons'
 
 // rows of an expanded section the host sends at a time; scrolling moves this window
-export const WINDOW = 200
+export const WINDOW = 75
 
 export type ExpanderItem = { text: string; color?: string; dim?: boolean; italic?: boolean }
 export type ExpanderStatus = 'runs' | 'done' | 'fail'

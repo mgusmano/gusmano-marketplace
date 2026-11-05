@@ -1,6 +1,6 @@
 {
   "name": "sencha",
-  "version": "0.0.24",
+  "version": "0.0.47",
   "description": "Sencha Claude Code Mod",
   "displayName": "Sencha",
   "types": "./types/index.d.ts",
@@ -24,31 +24,25 @@
   "mcpServers": {
     "extjs-tools": {
       "type": "stdio",
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "tsx",
-        "/Users/marcgusmano/@/vNext/MCP/extjs-tools/src/extjs-tools.ts"
+        "${CLAUDE_PLUGIN_ROOT}/MCP/extjs-tools/dist/extjs-tools.mjs"
       ],
       "env": {}
     },
     "extjs-dependency-graph": {
       "type": "stdio",
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "tsx",
-        "/Users/marcgusmano/@/vNext/MCP/extjs-dependency-graph/src/extjs-dependency-graph.ts"
+        "${CLAUDE_PLUGIN_ROOT}/MCP/extjs-dependency-graph/dist/extjs-dependency-graph.mjs"
       ],
       "env": {}
     },
     "extjs-ast-parser": {
       "type": "stdio",
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "tsx",
-        "/Users/marcgusmano/@/vNext/MCP/extjs-ast-parser/src/extjs-ast-parser.ts"
+        "${CLAUDE_PLUGIN_ROOT}/MCP/extjs-ast-parser/dist/extjs-ast-parser.mjs"
       ],
       "env": {}
     }
