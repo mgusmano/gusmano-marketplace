@@ -1,5 +1,12 @@
 # Custom Project Steps
 
+#### If `<projectType>` = `custom2` (Custom application)
+* Follow the steps in `custom-project.md` in this skill's directory.
+* set `<name>` to  `<response>`[0].html
+* after finishing, AskAQuestion Should the source code in `<name>` be displayed?
+* if yes, read the data and display as a separate code structure block in the output
+
+
 Used by `SKILL.md` when `<projectType>` = `custom` (Custom application).
 
 * **Invoke custom data tool**

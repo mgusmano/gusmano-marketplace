@@ -38,13 +38,6 @@ description: Determines Ext JS project details within a repository or workspace,
 
 3. **Branching Execution**
 
-#### If `<projectType>` = `custom` (Custom application)
-* Follow the steps in `custom-project.md` in this skill's directory.
-* set `<name>` to  `<response>`[0].html
-* after finishing, AskAQuestion Should the source code in `<name>` be displayed?
-* if yes, read the data and display as a separate code structure block in the output
-
-
 #### If `<projectType>` = `senchaCmd` (is a Sencha Cmd application)
 * Only run this branch 1 time.
     * MUST be run as a shell command: `extjs-tools_extjs-initilize-with-sencha-cmd`, with exactly these 2 parameters, always include progress=true
@@ -60,9 +53,11 @@ description: Determines Ext JS project details within a repository or workspace,
         - `<augmentedFiles>`
     * if a result=fail is returned , then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
     * if result=success is returned, continue.
-3. Verify Linting in Apps Folders
-    * If there are any file names in `<augmentedFiles>` then fead each file name and find the text to the right of all `***ADDITIONAL MESSAGE:` markers.  For each found text read the text and confirm that the lint fix is conforms to the text - make needed fixes to the file if not correct - indicate with `// ***ADDITIONAL MESSAGE FIX IS IMPLEMENTED`.
-    * If there are no file names in `<augmentedFiles>` then continue.
+3. Make all LINT fixes
+    * In all `<augmentedFiles>` find each //**LINT START** to //**LINT END** and make the changes needed.  if // additional: exists prioritize that
+    * If there are no file names in `<augmentedFiles>` with //**LINT START** to //**LINT END** then continue.
+    * one of the comments is `// AI:` - use that to write any comments to the right of it on what was done to fix the linting issues.  Do not exceed the 1 line comment limit.  If there are multiple // AI: comments, combine them into one comment.
+    * do not remove the resolved lint comments, leave them in the code for future reference.
 4. Production Build & Validation
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Do the following steps for each `<appFolder>` in `<sourceApps>` 
@@ -81,7 +76,7 @@ description: Determines Ext JS project details within a repository or workspace,
         - cwd=`<appFolder>`
         and wait for the server ready signal.
       c. Run Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer`
-        - progress=false
+        - progress=true
         - appPath=`<currentAppPath>`
         * to produce basic smoke test to find runtime errors. 
         * Never run puppeteer on its own - only use this Model Context Protocol tool.
@@ -98,8 +93,6 @@ description: Determines Ext JS project details within a repository or workspace,
 
 7. Cleanup and Documention Summary
     * Only start this step if all runtime errors are resolved.
-    * Run Model Contect Protocol tool `extjs-tools_extjs-prettier-all`
-        - folderPath=`<targetRoot>`
     * Show each `<appFolder>` in `<sourceApps>` in an inline browser at `http://localhost:1977/<currentAppPath>`
     * Create `<targetRoot>/UPGRADE.md` documenting:
         -steps
@@ -142,54 +135,72 @@ description: Determines Ext JS project details within a repository or workspace,
       * **Source Ext JS Theme (`<theme>`):** `<theme_name>`
 
 
+#### If `<projectType>` = `custom` (Custom application)
 
-#### If `<projectType>` = `custom2` (Custom application)
-* **Invoke custom data tool**
+* create a v8 folder in `<rootPath>` and refer to it as `<v8>`
+* copy entire `<sourceRoot>` to `<v8>` and include all files and folders
+
+* data
     * set `<data>` to the following JSON array (keep it valid JSON):
     ```json
     [
-      { "html": "/Users/demo/upgrade/Huge/hugerun/current/wab/aaak/frmDMDebtorsSearch.csp" }
+      { 
+        "v8sdk": "/Users/demo/upgrade/ext-8.0.0",
+        "html": path.join(`<v8>`, "wab", "aaak", "frmDMDebtorsSearch.html"),
+        "files" : [
+            "../resources/javascriptEXT/AcckComboBox.js",
+            "../resources/javascriptEXT/AcckComboBox2.js",
+            "../resources/javascriptEXT/AcckCustomFieldPanel.js",
+            "../resources/javascriptEXT/AcckCustomFieldSearchPanel.js",                          
+            "../resources/javascriptEXT/AcckProxyStore.js",
+            "../resources/javascriptEXT/frmDMDebtorsSearch.js",
+            "../resources/javascriptEXT/frmShortCuts.js",
+            "../resources/javascriptEXT/IframeWindow.js",
+            "../resources/javascriptEXT/oasis.js",
+            "../resources/javascriptEXT/oasis2.js"
+        ]
+      }
     ]
     ```
-   * call `mcp__plugin_sencha_extjs-tools__custom` (load its schema with ToolSearch first if it is deferred)
-   * pass `data` set to the value of `<data>`, as a JSON string
-   * report the tool's response as a JSON code structure
 
-* Load the custom SKILL.md at `<rootPath>`
-* Run the instructions in the custom SKILL.md
-    - return `<customData>` and `<customRootPath>` and `<customRootHtml>`
-* report `<customData>` and `<customRootPath>` and `<customRootHtml>`
-
-* Run Model Context Protocol tool `extjs-custom-data` 
-      - customData=`<customData>`
-      returning:
-      - `<customData>`
-
-    * if a result=fail is returned, then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
-    * if result=success is returned, then continue.
-
-* For each object in `<customData>` get the files array
-* for each src in the files array, call Run Model Context Protocol tool `extjs-lint-single-file` 
-      - filePath=`src`
+* for each string `<file>` in the files array for `<v8>`, call Run Model Context Protocol tool `extjs-lint-single-file-fix` 
+      - filePath=`<file>`
       - fromVersion="4.2.6"
 
-3. Verify Linting in Apps Folders
-    * Read each file in `<augmentedFiles>` and find the text to the right of all `***ADDITIONAL MESSAGE:` markers.  For each found text read the text and confirm that the lint fix is conforms to the text - make needed fixes to the file if not correct - indicate with `// ***ADDITIONAL MESSAGE FIX IS IMPLEMENTED`.
-4. Update index.html
+* Make all LINT fixes
+    * for each string `<file>` in the files array  for `<v8>`, find each //**LINT START** to //**LINT END** and make the changes needed.  if // additional: exists prioritize that
+    * If there are no file names in `<augmentedFiles>` with //**LINT START** to //**LINT END** then continue.
+    * one of the comments is `// AI:` - use that to write any comments to the right of it on what was done to fix the linting issues.  Do not exceed the 1 line comment limit.  If there are multiple // AI: comments, combine them into one comment. never leave this blank - always comment on every instance.
+    * do not remove the resolved lint comments, leave them in the code for future reference.
+    * never remove any source code, always comment it out as a comment - never on a separate line - always to the right of the modified source code line starting with `//**LINT COMMENTED OUT**`  Add a comment `// AI: ` to the right of the commented code explaining why it was commented out - always on the same line, never on a separate line.  If there are multiple // AI: comments, combine them into one comment.
+    * do research and find solutions for all deep API migrations
+    * do not remove `// AI: ` if it is blank, leave it in the code for future reference.
+    * do not leave any `// AI: ` blank - comment on every instance
+
+* Update index.html
     * update script and lint tags for the target SDK then make the needed updates - set target SDK folder to `<targetSDK>`
-5. Smoke test
+    * use v8sdk to update the index.html file in `<v8>`
+    
+* Smoke test
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Run Model Context Protocol tool `extjs-tools_sencha-web-start`
         - folderPath=`<targetRoot>`
           and wait for sencha web start ready.
-    * Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer` to produce basic smoke test to find runtime errors.  
-      * Never run puppeteer on its own - only use this Model Context Protocol tool.
-      * Fix any errors and rerun from the beginning of Smoke Test until no more errors.
+
+    * Run Model Context Protocol tool `extjs-tools_extjs-capture-logs-puppeteer`
+    - progress=true
+    - appPath=`<currenttargetRootAppPath>`
+    * to produce basic smoke test to find runtime errors. 
+    * Never run puppeteer on its own - only use this Model Context Protocol tool.
+    * Resolve any errors and rerun from the beginning of Smoke Test until no more errors
+    c. When an error is resolved put a comment `//**UPGRADE FROM SMOKE TEST START**` above the resolution and put a comment `//**UPGRADE FROM SMOKE TEST END**` below the resolution 
+
     * when all errors are fixed Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
-    * Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetSDK>` resolve any runtime errors
+    * Research and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetSDK>` resolve any runtime errors
       * If an error is resolved, repeat this step 11 - Smoke test. Continue until all errors are resolved.
     * Do not move to the next step until all errors are resolved.
-6. Cleanup
+
+* Cleanup
     * Only start this step if all runtime errors are resolved.
     * Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
     * Run Model Contect Protocol tool `extjs-tools_extjs-prettier-all`
@@ -202,7 +213,8 @@ description: Determines Ext JS project details within a repository or workspace,
         -residual warnings
     * Output the final path to `<targetRoot>/UPGRADE.md`.
     * Do not outout any text summary, explain that the upgrate is now complete and that the summary is available in  `<name>/UPGRADE.md`
-6. Output Format
+
+* Output Format
     * Return the final analysis in the following structured table format - 1 per line:
       * **Source Project Type (`<projectType>`):** `senchaCmd` | `extGen` | `custom`
       * **Source Folder (`<sourceRoot>`):** `<path_to_sourceRoot>`

@@ -194,6 +194,35 @@ function getDoxiData(version) {
     }
 }
 
+const reportedDoxiErrors = new Set();
+
+function sleepSync (ms) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// A doxi file can be briefly unreadable while a build is copying dist/doxi, so retry once before failing.
+// Failures are reported to stderr once per file so repeated lint calls do not flood the MCP stderr stream.
+function readDoxiFile (toolkit, version) {
+    const filePath = path.resolve(__dirname, `../doxi/extjs/${version}/all-classes/${toolkit}_all-classes.json`);
+    let lastError;
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            return JSON.parse(fs.readFileSync(filePath));
+        } catch (error) {
+            lastError = error;
+            if (attempt === 0) {
+                sleepSync(250);
+            }
+        }
+    }
+    const message = `Error reading the doxi file for ${toolkit} ${version} (${lastError.message}) at ${filePath}`;
+    if (!reportedDoxiErrors.has(filePath)) {
+        reportedDoxiErrors.add(filePath);
+        console.error(message);
+    }
+    throw new Error(message);
+}
+
 function loadDoxiData (version) {
     let fileContents;
     const userExtjsSettings = this.userExtjsSettings;
@@ -207,22 +236,17 @@ function loadDoxiData (version) {
         if (!doxi[toolkit][fromVersion]) {
             if (typeof userExtjsSettings.fromVersion !== 'undefined') {
                 if (!version) {
-                    console.log(`fromVersion requested: ${toolkit} - ${userExtjsSettings.fromVersion}, loading nearest doxi json for ${fromVersion}`);
+                    console.error(`fromVersion requested: ${toolkit} - ${userExtjsSettings.fromVersion}, loading nearest doxi json for ${fromVersion}`);
                 }
             } else if (typeof userExtjsSettings.version !== 'undefined') {
                 if (!version) {
-                    console.log(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${fromVersion}`);
+                    console.error(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${fromVersion}`);
                 }
             }
-            try {
-                fileContents = fs.readFileSync(path.resolve(__dirname, `../doxi/extjs/${fromVersion}/all-classes/${toolkit}_all-classes.json`));
-                doxi[toolkit][fromVersion] = JSON.parse(fileContents);
-            } catch (error) {
-                console.error('Error reading the doxi file');
-            }
+            doxi[toolkit][fromVersion] = readDoxiFile(toolkit, fromVersion);
         }
     } else {
-        console.log(`Invalid Ext JS fromVersion ${fromVersion}`);
+        console.error(`Invalid Ext JS fromVersion ${fromVersion}`);
     }
 
     if (toVersion && this.isValidDoxiVersion(toVersion)) {
@@ -230,22 +254,17 @@ function loadDoxiData (version) {
         if (!doxi[toolkit][toVersion]) {
             if (typeof userExtjsSettings.toVersion !== 'undefined') {
                 if (!version) {
-                    console.log(`toVersion requested: ${toolkit} - ${userExtjsSettings.toVersion}, loading nearest doxi json for ${toVersion}`);
+                    console.error(`toVersion requested: ${toolkit} - ${userExtjsSettings.toVersion}, loading nearest doxi json for ${toVersion}`);
                 }
             } else if (typeof userExtjsSettings.version !== 'undefined') {
                 if (!version) {
-                    console.log(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${toVersion}`);
+                    console.error(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${toVersion}`);
                 }
             }
-            try {
-                fileContents = fs.readFileSync(path.resolve(__dirname, `../doxi/extjs/${toVersion}/all-classes/${toolkit}_all-classes.json`));
-                doxi[toolkit][toVersion] = JSON.parse(fileContents);
-            } catch (error) {
-                console.error('Error reading the doxi file');
-            }
+            doxi[toolkit][toVersion] = readDoxiFile(toolkit, toVersion);
         }
     } else {
-        console.log(`Invalid Ext JS toVersion ${toVersion}`);
+        console.error(`Invalid Ext JS toVersion ${toVersion}`);
     }
 
     // after loading the data, we need to create the maps
