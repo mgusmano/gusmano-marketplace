@@ -236,11 +236,11 @@ function loadDoxiData (version) {
         if (!doxi[toolkit][fromVersion]) {
             if (typeof userExtjsSettings.fromVersion !== 'undefined') {
                 if (!version) {
-                    console.error(`fromVersion requested: ${toolkit} - ${userExtjsSettings.fromVersion}, loading nearest doxi json for ${fromVersion}`);
+                    //console.error(`fromVersion requested: ${toolkit} - ${userExtjsSettings.fromVersion}, loading nearest doxi json for ${fromVersion}`);
                 }
             } else if (typeof userExtjsSettings.version !== 'undefined') {
                 if (!version) {
-                    console.error(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${fromVersion}`);
+                    //console.error(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${fromVersion}`);
                 }
             }
             doxi[toolkit][fromVersion] = readDoxiFile(toolkit, fromVersion);
@@ -254,11 +254,11 @@ function loadDoxiData (version) {
         if (!doxi[toolkit][toVersion]) {
             if (typeof userExtjsSettings.toVersion !== 'undefined') {
                 if (!version) {
-                    console.error(`toVersion requested: ${toolkit} - ${userExtjsSettings.toVersion}, loading nearest doxi json for ${toVersion}`);
+                    //console.error(`toVersion requested: ${toolkit} - ${userExtjsSettings.toVersion}, loading nearest doxi json for ${toVersion}`);
                 }
             } else if (typeof userExtjsSettings.version !== 'undefined') {
                 if (!version) {
-                    console.error(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${toVersion}`);
+                    //console.error(`version requested: ${toolkit} - ${userExtjsSettings.version}, loading nearest doxi json for ${toVersion}`);
                 }
             }
             doxi[toolkit][toVersion] = readDoxiFile(toolkit, toVersion);

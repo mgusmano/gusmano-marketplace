@@ -50,12 +50,13 @@ description: Determines Ext JS project details within a repository or workspace,
         - `<sourceApps>`
         - `<sourcePackages>`
         - `<targetRoot>`
-        - `<augmentedFiles>`
+        - `<lintFilesStrings>`
     * if a result=fail is returned , then end processing - do not do any exploring, ALWAYS END THIS SKILL — echo the tool's fail reason
     * if result=success is returned, continue.
 3. Make all LINT fixes
-    * In all `<augmentedFiles>` find each //**LINT START** to //**LINT END** and make the changes needed.  if // additional: exists prioritize that
-    * If there are no file names in `<augmentedFiles>` with //**LINT START** to //**LINT END** then continue.
+    * For each `<lintFilesStrings>` read the file and find each //**LINT START** to //**LINT END** and make the changes needed.  if // additional: exists prioritize that
+    * Read each file from `<lintFilesStrings>` one at a time and fully make changes to that file before moving to the next file
+    * If there are no file names in `<lintFilesStrings>` with //**LINT START** to //**LINT END** then continue.
     * one of the comments is `// AI:` - use that to write any comments to the right of it on what was done to fix the linting issues.  Do not exceed the 1 line comment limit.  If there are multiple // AI: comments, combine them into one comment.
     * do not remove the resolved lint comments, leave them in the code for future reference.
 4. Production Build & Validation
@@ -134,34 +135,23 @@ description: Determines Ext JS project details within a repository or workspace,
       * **Source Ext JS Toolkit (`<toolkit>`):** `classic` | `modern` | `unknown`
       * **Source Ext JS Theme (`<theme>`):** `<theme_name>`
 
+#### If `<projectType>` = `customABC` (Custom application)
+* Follow the steps in `custom-project.md` in this skill's directory.
+* set `<name>` to  `<response>`[0].html
+* after finishing, AskAQuestion Should the source code in `<name>` be displayed?
+* if yes, read the data and display as a separate code structure block in the output
+
+
 
 #### If `<projectType>` = `custom` (Custom application)
 
 * create a v8 folder in `<rootPath>` and refer to it as `<v8>`
 * copy entire `<sourceRoot>` to `<v8>` and include all files and folders
 
-* data
-    * set `<data>` to the following JSON array (keep it valid JSON):
-    ```json
-    [
-      { 
-        "v8sdk": "/Users/demo/upgrade/ext-8.0.0",
-        "html": path.join(`<v8>`, "wab", "aaak", "frmDMDebtorsSearch.html"),
-        "files" : [
-            "../resources/javascriptEXT/AcckComboBox.js",
-            "../resources/javascriptEXT/AcckComboBox2.js",
-            "../resources/javascriptEXT/AcckCustomFieldPanel.js",
-            "../resources/javascriptEXT/AcckCustomFieldSearchPanel.js",                          
-            "../resources/javascriptEXT/AcckProxyStore.js",
-            "../resources/javascriptEXT/frmDMDebtorsSearch.js",
-            "../resources/javascriptEXT/frmShortCuts.js",
-            "../resources/javascriptEXT/IframeWindow.js",
-            "../resources/javascriptEXT/oasis.js",
-            "../resources/javascriptEXT/oasis2.js"
-        ]
-      }
-    ]
-    ```
+* Follow the steps in `custom-project.md` in this skill's directory.
+* set `<data>` to  the return from `custom-project.md` 
+* after finishing, AskAQuestion Should the source code in `<name>` be displayed?
+* if yes, read the data and display as a separate code structure block in the output
 
 * for each string `<file>` in the files array for `<v8>`, call Run Model Context Protocol tool `extjs-lint-single-file-fix` 
       - filePath=`<file>`

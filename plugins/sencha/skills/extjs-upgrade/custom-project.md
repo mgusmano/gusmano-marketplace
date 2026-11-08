@@ -1,22 +1,29 @@
 # Custom Project Steps
 
-#### If `<projectType>` = `custom2` (Custom application)
-* Follow the steps in `custom-project.md` in this skill's directory.
-* set `<name>` to  `<response>`[0].html
-* after finishing, AskAQuestion Should the source code in `<name>` be displayed?
-* if yes, read the data and display as a separate code structure block in the output
-
-
 Used by `SKILL.md` when `<projectType>` = `custom` (Custom application).
 
 * **Invoke custom data tool**
+
     * set `<data>` to the following JSON array (keep it valid JSON):
     ```json
     [
-      { "html": "/Users/demo/upgrade/Huge/hugerun/current/wab/aaak/frmDMDebtorsSearch.csp" }
+      { 
+        "v8sdk": "/Users/demo/upgrade/ext-8.0.0",
+        "html": path.join(`<v8>`, "wab", "aaak", "frmDMDebtorsSearch.html"),
+        "files" : [
+            "../resources/javascriptEXT/AcckComboBox.js",
+            "../resources/javascriptEXT/AcckComboBox2.js",
+            "../resources/javascriptEXT/AcckCustomFieldPanel.js",
+            "../resources/javascriptEXT/AcckCustomFieldSearchPanel.js",                          
+            "../resources/javascriptEXT/AcckProxyStore.js",
+            "../resources/javascriptEXT/frmDMDebtorsSearch.js",
+            "../resources/javascriptEXT/frmShortCuts.js",
+            "../resources/javascriptEXT/IframeWindow.js",
+            "../resources/javascriptEXT/oasis.js",
+            "../resources/javascriptEXT/oasis2.js"
+        ]
+      }
     ]
     ```
-   * call `mcp__plugin_sencha_extjs-tools__custom` (load its schema with ToolSearch first if it is deferred)
-   * pass `data` set to the value of `<data>`, as a JSON string
-   * pass the tool's response as a JSON code structure in `<response>`
-   * report `<response>`[0].html as `<name>`
+
+   * report `<data>` back to calling SKILL.md
