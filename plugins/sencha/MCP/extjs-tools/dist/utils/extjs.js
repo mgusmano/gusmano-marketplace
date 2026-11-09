@@ -84,7 +84,7 @@ const doxi = {
     modern: {}
 };
 
-function createLookupMaps () {
+function createLookupMaps() {
     let toolkit, ver;
 
     for (toolkit in doxi) {
@@ -98,14 +98,14 @@ function createLookupMaps () {
                         doxi[toolkit][ver].aliasMap = {};
                         const doxiItems = doxi[toolkit][ver].global.items;
                         const doxiItemsLen = doxiItems.length;
-            
+
                         for (let i = 0; i < doxiItemsLen; i++) {
                             const alias = doxiItems[i].alias;
                             const alternateClassNames = doxiItems[i].alternateClassNames;
-            
+
                             // add the Class name to the classNamesMape
                             doxi[toolkit][ver].classNamesMap[doxiItems[i].name] = doxiItems[i].name;
-            
+
                             // add the alias names to the aliasMap
                             if (alias) {
                                 const aliasArray = alias.split(',');
@@ -113,7 +113,7 @@ function createLookupMaps () {
                                     doxi[toolkit][ver].aliasMap[aliasArray[j]] = doxiItems[i].name;
                                 }
                             }
-            
+
                             // add the alternate class names to the alternateClassNamesMap
                             if (alternateClassNames) {
                                 const alternateClassNamesArray = alternateClassNames.split(',');
@@ -129,13 +129,13 @@ function createLookupMaps () {
     }
 }
 
-function init (context) {
+function init(context) {
     this.userExtjsSettings = context.settings.extjs || {};
     this.extjsSettings = Object.assign({}, extjsDefaultSettings, context.settings.extjs);
     this.loadDoxiData();
 }
 
-function isValidDoxiVersion (version) {
+function isValidDoxiVersion(version) {
     const toolkit = this.extjsSettings.toolkit;
     let doxiVersion;
 
@@ -146,7 +146,7 @@ function isValidDoxiVersion (version) {
     return doxiVersion;
 }
 
-function getDoxiVersion (version) {
+function getDoxiVersion(version) {
     const toolkit = this.extjsSettings.toolkit;
     let doxiVersion;
 
@@ -157,7 +157,7 @@ function getDoxiVersion (version) {
     return doxiVersion || this.getDoxiLatestMinorVersion(version) || this.getDoxiLatestVersion();
 }
 
-function getDoxiLatestVersion () {
+function getDoxiLatestVersion() {
     const toolkit = this.extjsSettings.toolkit;
     let doxiVersion;
 
@@ -167,7 +167,7 @@ function getDoxiLatestVersion () {
     return doxiVersion;
 }
 
-function getDoxiLatestMinorVersion (version) {
+function getDoxiLatestMinorVersion(version) {
     const toolkit = this.extjsSettings.toolkit;
     let doxiVersion;
     let majorVersion;
@@ -196,13 +196,13 @@ function getDoxiData(version) {
 
 const reportedDoxiErrors = new Set();
 
-function sleepSync (ms) {
+function sleepSync(ms) {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 // A doxi file can be briefly unreadable while a build is copying dist/doxi, so retry once before failing.
 // Failures are reported to stderr once per file so repeated lint calls do not flood the MCP stderr stream.
-function readDoxiFile (toolkit, version) {
+function readDoxiFile(toolkit, version) {
     const filePath = path.resolve(__dirname, `../doxi/extjs/${version}/all-classes/${toolkit}_all-classes.json`);
     let lastError;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -218,12 +218,11 @@ function readDoxiFile (toolkit, version) {
     const message = `Error reading the doxi file for ${toolkit} ${version} (${lastError.message}) at ${filePath}`;
     if (!reportedDoxiErrors.has(filePath)) {
         reportedDoxiErrors.add(filePath);
-        console.error(message);
     }
     throw new Error(message);
 }
 
-function loadDoxiData (version) {
+function loadDoxiData(version) {
     let fileContents;
     const userExtjsSettings = this.userExtjsSettings;
     const extjsSettings = this.extjsSettings;
@@ -280,7 +279,7 @@ function loadDoxiData (version) {
     }
 }
 
-function isExtObject (node) {
+function isExtObject(node) {
     return node.callee.property &&
         (
             node.callee.property.name === 'Ext' ||
@@ -288,7 +287,7 @@ function isExtObject (node) {
         );
 }
 
-function isExtExtend (node) {
+function isExtExtend(node) {
     let retVal = false;
 
     if (node && node.callee && node.callee.object && node.callee.property) {
@@ -297,7 +296,7 @@ function isExtExtend (node) {
     return retVal;
 }
 
-function isExtOverride (node) {
+function isExtOverride(node) {
     let retVal = false;
 
     if (node && node.callee && node.callee.object && node.callee.property) {
@@ -306,7 +305,7 @@ function isExtOverride (node) {
     return retVal;
 }
 
-function isExtDefine (node) {
+function isExtDefine(node) {
     let retVal = false;
 
     if (node && node.callee && node.callee.object && node.callee.property) {
@@ -315,7 +314,7 @@ function isExtDefine (node) {
     return retVal;
 }
 
-function isExtCreate (node) {
+function isExtCreate(node) {
     let retVal = false;
 
     if (node && node.callee && node.callee.object && node.callee.property) {
@@ -324,7 +323,7 @@ function isExtCreate (node) {
     return retVal;
 }
 
-function isObjectOfExtDefine (node) {
+function isObjectOfExtDefine(node) {
     let retVal = false;
 
     if (!utils.isProgram(node) && node.parent.callee && node.parent.callee.object && node.parent.callee.property) {
@@ -333,27 +332,27 @@ function isObjectOfExtDefine (node) {
     return retVal;
 }
 
-function isUnderExtDefine (node) {
+function isUnderExtDefine(node) {
     return Boolean(utils.getParent(node, isExtDefine));
 }
 
-function getExtDefineObject (node) {
+function getExtDefineObject(node) {
     return utils.getParent(node, isObjectOfExtDefine);
 }
 
-function getExtExtendCall (node) {
+function getExtExtendCall(node) {
     return utils.getParent(node, isExtExtend);
 }
 
-function getExtOverrideCall (node) {
+function getExtOverrideCall(node) {
     return utils.getParent(node, isExtOverride);
 }
 
-function getExtDefineCall (node) {
+function getExtDefineCall(node) {
     return utils.getParent(node, isExtDefine);
 }
 
-function isPropertyAssignment (node) {
+function isPropertyAssignment(node) {
     if (node.parent.type === 'ObjectExpression' && node.parent.parent.type === 'Property' && node.parent.parent.key.type === 'Identifier') {
         return true;
     } else {
@@ -361,7 +360,7 @@ function isPropertyAssignment (node) {
     }
 }
 
-function isListenerProperty (node) {
+function isListenerProperty(node) {
     if (node.parent.type === 'ObjectExpression' && node.parent.parent.type === 'Property' && node.parent.parent.key.name === 'listeners') {
         return true;
     } else {
@@ -369,7 +368,7 @@ function isListenerProperty (node) {
     }
 }
 
-function isListenerCallExpression (node) {
+function isListenerCallExpression(node) {
     let retVal = false;
 
     if (node && node.callee && node.callee.object && node.callee.property) {
@@ -377,7 +376,7 @@ function isListenerCallExpression (node) {
     }
     return retVal;
 }
-function getOverridePropertyName (node) {
+function getOverridePropertyName(node) {
     const cls = utils.getParent(node, isExtDefine);
 
     if (cls) {
@@ -387,7 +386,7 @@ function getOverridePropertyName (node) {
     }
 }
 
-function isOverrideProperty (node) {
+function isOverrideProperty(node) {
     let retVal = false;
 
     if (node.type === 'Property') {
@@ -396,7 +395,7 @@ function isOverrideProperty (node) {
     return retVal;
 }
 
-function isSubClass (className, parentClassName, version) {
+function isSubClass(className, parentClassName, version) {
     const doxiClass = this.getDoxiClassByName(className, version || this.extjsSettings.fromVersion || this.extjsSettings.toVersion);
 
     if (doxiClass && doxiClass.extended) {
@@ -408,13 +407,13 @@ function isSubClass (className, parentClassName, version) {
     }
 }
 
-function isOverriddenExtClass (node) {
+function isOverriddenExtClass(node) {
     const obj = this.getExtDefineObject(node);
     return obj && obj.properties.find(o => o.key && o.key.name === 'override');
 }
 
-function getOverriddenClassName (node, traverseToRoot) {
-    if (traverseToRoot || 
+function getOverriddenClassName(node, traverseToRoot) {
+    if (traverseToRoot ||
         this.isExtDefine(node.parent.parent) ||
         this.isExtOverride(node.parent.parent) ||
         (utils.isMemberExpression(node) && (utils.isThisExpression(node.object) || utils.isIdentifierThisExpression(node.object)))
@@ -443,20 +442,20 @@ function getOverriddenClassName (node, traverseToRoot) {
     }
 }
 
-function isExtendedExtClass (node) {
+function isExtendedExtClass(node) {
     const obj = this.getExtDefineObject(node);
     return obj && obj.properties.find(o => o.key && o.key.name === 'extend');
 }
 
-function getExtendedClassName (node, traverseToRoot) {
-    if (traverseToRoot || 
+function getExtendedClassName(node, traverseToRoot) {
+    if (traverseToRoot ||
         (node.parent && node.parent.parent && (this.isExtDefine(node.parent.parent) || this.isExtExtend(node.parent.parent))) ||
         (utils.isMemberExpression(node) && (utils.isThisExpression(node.object) || utils.isIdentifierThisExpression(node.object)))
     ) {
         let obj = this.getExtDefineObject(node);
         const extendedClsNode = obj && obj.properties.find(o => o.key && o.key.name === 'extend');
         let className = extendedClsNode && extendedClsNode.value.value;
-    
+
         if (className) {
             return className;
         } else {
@@ -477,11 +476,11 @@ function getExtendedClassName (node, traverseToRoot) {
     }
 }
 
-function isExtComponentSubClass (className, version) {
+function isExtComponentSubClass(className, version) {
     return this.isSubClass(className, 'Ext.Component', version);
 }
 
-function isExtComponentTemplateMethod (className, methodName) {
+function isExtComponentTemplateMethod(className, methodName) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -509,7 +508,7 @@ function isExtComponentTemplateMethod (className, methodName) {
     return doxiItem && doxiItem.template;
 }
 
-function getClassNameFromExtCreate (node, version) {
+function getClassNameFromExtCreate(node, version) {
     let xtypeName,
         doxiClass,
         className,
@@ -566,11 +565,11 @@ function getClassNameFromExtCreate (node, version) {
     return className;
 }
 
-function getClassName (node, version) {
+function getClassName(node, version) {
     return this.getExtendedClassName(node) || this.getOverriddenClassName(node) || this.getClassNameFromExtCreate(node, version);
 }
 
-function getExtClassDefinition (node, version) {
+function getExtClassDefinition(node, version) {
     let classObject;
     let className;
     let xtypeName;
@@ -595,10 +594,10 @@ function getExtClassDefinition (node, version) {
                 if (className && className.indexOf && className.indexOf('Ext') === 0) {
                     classObject = this.getDoxiClassByName(className, version);
                 }
-            } 
+            }
         }
         // xclass or extend or override
-        if (node.key && node.key.name && 
+        if (node.key && node.key.name &&
             (node.key.name === 'xclass' || node.key.name === 'extend' || node.key.name === 'override')) {
             className = node.value.value;
             if (className) {
@@ -624,7 +623,7 @@ function getExtClassDefinition (node, version) {
         const nodePropertyName = node.property && node.property.name;
 
         // special handling of Ext.create(), Ext.createByAlias(), Ext.widget() and Ext.createWidget
-        if (nodeObjectName === 'Ext' && 
+        if (nodeObjectName === 'Ext' &&
             (nodePropertyName === 'create' || nodePropertyName === 'createByAlias' || nodePropertyName === 'widget' || nodePropertyName === 'createWidget')) {
             const args = node.parent.arguments;
 
@@ -652,7 +651,8 @@ function getExtClassDefinition (node, version) {
     return classObject;
 }
 
-function getExtClassConfig (node, version, includeUndocumented) {
+function getExtClassConfig(node, version, includeUndocumented) {
+    //console.error(`getExtClassConfig`, version, node)
     let obj,
         configName,
         doxiClass,
@@ -755,14 +755,15 @@ function getExtClassConfig (node, version, includeUndocumented) {
         } else {
             className = this.getExtendedClassName(node, true) || this.getOverriddenClassName(node, true);
             // special handling for field configs in an Ext.data.Model derived class
-            if (className === 'Ext.data.Model' && 
-                (node.parent && node.parent.parent && utils.isArrayExpression(node.parent.parent)) && 
+            if (className === 'Ext.data.Model' &&
+                (node.parent && node.parent.parent && utils.isArrayExpression(node.parent.parent)) &&
                 (node.parent.parent.parent && utils.isProperty(node.parent.parent.parent) && node.parent.parent.parent.key.name === 'fields')
             ) {
                 const fieldTypePropertyNode = node.parent.properties && node.parent.properties.find(o => o.key && o.key.name === 'type');
                 if (fieldTypePropertyNode && utils.isLiteral(fieldTypePropertyNode.value)) {
                     let fieldTypeClassObject;
-                    if (version.indexOf('4') === 0) {
+                    console.error(`extjs.js: version`, version)
+                    if (version?.indexOf('4') === 0) {
                         fieldTypeClassObject = this.getDoxiClassByName('Ext.data.Field', version);
                     } else {
                         fieldTypeClassObject = this.getDoxiClassByAliasName(`data.field.${fieldTypePropertyNode.value.value}`, version);
@@ -798,7 +799,7 @@ function getExtClassConfig (node, version, includeUndocumented) {
     return obj;
 }
 
-function getExtClassMethod (node, version, includeUndocumented) {
+function getExtClassMethod(node, version, includeUndocumented) {
     let obj,
         methodName,
         doxiClass,
@@ -969,7 +970,7 @@ function getExtClassMethod (node, version, includeUndocumented) {
     return obj;
 }
 
-function getExtClassProperty (node, version, includeUndocumented) {
+function getExtClassProperty(node, version, includeUndocumented) {
     let obj;
     let propertyName;
     let className;
@@ -1042,7 +1043,7 @@ function getExtClassProperty (node, version, includeUndocumented) {
     return obj;
 }
 
-function cleanDeprecatedMessage (doxiItem) {
+function cleanDeprecatedMessage(doxiItem) {
     if (doxiItem.deprecatedMessage) {
         return doxiItem.deprecatedMessage.replace(/[\t\n\r]/gm, ' '); // replace newlines and tabs with a single space
     } else if (doxiItem.text) {
@@ -1052,7 +1053,7 @@ function cleanDeprecatedMessage (doxiItem) {
     }
 }
 
-function isDeprecatedClass (node, returnObject) {
+function isDeprecatedClass(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1089,16 +1090,17 @@ function isDeprecatedClass (node, returnObject) {
     }
 }
 
-function getDeprecatedClass (node) {
+function getDeprecatedClass(node) {
     return this.isDeprecatedClass(node, true);
 }
 
-function isDeprecatedConfig (node, returnObject) {
+function isDeprecatedConfig(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
     const fromVersion_LatestMinor = this.getDoxiLatestMinorVersion(fromVersion);
     let foundOnVersion = toVersion;
+
     let doxiItem = this.getExtClassConfig(node, toVersion); // check the toVersion first
 
     // check the fromVersion if needed 
@@ -1158,11 +1160,11 @@ function isDeprecatedConfig (node, returnObject) {
     }
 }
 
-function getDeprecatedConfig (node) {
+function getDeprecatedConfig(node) {
     return this.isDeprecatedConfig(node, true);
 }
 
-function isDeprecatedMethod (node, returnObject) {
+function isDeprecatedMethod(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1217,11 +1219,11 @@ function isDeprecatedMethod (node, returnObject) {
     }
 }
 
-function getDeprecatedMethod (node) {
+function getDeprecatedMethod(node) {
     return this.isDeprecatedMethod(node, true);
 }
 
-function isDeprecatedProperty (node, returnObject) {
+function isDeprecatedProperty(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1276,12 +1278,12 @@ function isDeprecatedProperty (node, returnObject) {
     }
 }
 
-function getDeprecatedProperty (node) {
+function getDeprecatedProperty(node) {
     return this.isDeprecatedProperty(node, true);
 }
 
 
-function isExistingAlias (node, returnObject) {
+function isExistingAlias(node, returnObject) {
     const aliasName = this.getAliasName(node);
     let doxiItem;
 
@@ -1302,11 +1304,11 @@ function isExistingAlias (node, returnObject) {
     }
 }
 
-function getExistingAlias (node) {
+function getExistingAlias(node) {
     return this.isExistingAlias(node, true);
 }
 
-function isExistingMethod (node, returnObject) {
+function isExistingMethod(node, returnObject) {
     const version = this.extjsSettings.toVersion || this.extjsSettings.version || this.extjsSettings.fromVersion;
     let doxiItem = this.getExtClassMethod(node, version);
 
@@ -1328,11 +1330,11 @@ function isExistingMethod (node, returnObject) {
     }
 }
 
-function getExistingMethod (node) {
+function getExistingMethod(node) {
     return this.isExistingMethod(node, true);
 }
 
-function isPrivateClass (node, returnObject) {
+function isPrivateClass(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
     const doxiItem = this.getExtClassDefinition(node, toVersion);
@@ -1350,11 +1352,11 @@ function isPrivateClass (node, returnObject) {
     }
 }
 
-function getPrivateClass (node) {
+function getPrivateClass(node) {
     return this.isPrivateClass(node, true);
 }
 
-function isPrivateConfig (node, returnObject) {
+function isPrivateConfig(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
     const toVersion_LatestMinor = this.getDoxiLatestMinorVersion(toVersion);
@@ -1388,11 +1390,11 @@ function isPrivateConfig (node, returnObject) {
     }
 }
 
-function getPrivateConfig (node) {
+function getPrivateConfig(node) {
     return this.isPrivateConfig(node, true);
 }
 
-function isPrivateMethod (node, returnObject) {
+function isPrivateMethod(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
     const toVersion_LatestMinor = this.getDoxiLatestMinorVersion(toVersion);
@@ -1426,12 +1428,12 @@ function isPrivateMethod (node, returnObject) {
     }
 }
 
-function getPrivateMethod (node) {
+function getPrivateMethod(node) {
     return this.isPrivateMethod(node, true);
 }
 
 
-function isPrivateProperty (node, returnObject) {
+function isPrivateProperty(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
     const toVersion_LatestMinor = this.getDoxiLatestMinorVersion(toVersion);
@@ -1473,11 +1475,11 @@ function isPrivateProperty (node, returnObject) {
     }
 }
 
-function getPrivateProperty (node) {
+function getPrivateProperty(node) {
     return this.isPrivateProperty(node, true);
 }
 
-function isRemovedClass (node, returnObject) {
+function isRemovedClass(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1519,11 +1521,11 @@ function isRemovedClass (node, returnObject) {
     }
 }
 
-function getRemovedClass (node) {
+function getRemovedClass(node) {
     return this.isRemovedClass(node, true);
 }
 
-function isRemovedConfig (node, returnObject) {
+function isRemovedConfig(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1591,11 +1593,11 @@ function isRemovedConfig (node, returnObject) {
     }
 }
 
-function getRemovedConfig (node) {
+function getRemovedConfig(node) {
     return this.isRemovedConfig(node, true);
 }
 
-function isRemovedMethod (node, returnObject) {
+function isRemovedMethod(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1663,11 +1665,11 @@ function isRemovedMethod (node, returnObject) {
     }
 }
 
-function getRemovedMethod (node) {
+function getRemovedMethod(node) {
     return this.isRemovedMethod(node, true);
 }
 
-function isRemovedProperty (node, returnObject) {
+function isRemovedProperty(node, returnObject) {
     const extjsSettings = this.extjsSettings;
     const fromVersion = this.getDoxiVersion(extjsSettings.fromVersion || extjsSettings.version);
     const toVersion = this.getDoxiVersion(extjsSettings.toVersion || extjsSettings.version);
@@ -1690,7 +1692,7 @@ function isRemovedProperty (node, returnObject) {
             objFrom = this.getExtClassProperty(node, fromVersion_LatestMinor, true);
         }
     }
-    
+
     // if objTo not found, check the latest minor version of the current toVersion being checked
     if (!objTo && (toVersion_LatestMinor !== toVersion)) {
         objTo = this.getExtClassProperty(node, toVersion_LatestMinor);
@@ -1729,11 +1731,11 @@ function isRemovedProperty (node, returnObject) {
     }
 }
 
-function getRemovedProperty (node) {
+function getRemovedProperty(node) {
     return this.isRemovedProperty(node, true);
 }
 
-function getXTypeName (node) {
+function getXTypeName(node) {
     let xtypeNode,
         xtypeName = '';
 
@@ -1758,7 +1760,7 @@ function getXTypeName (node) {
             xtypeName = xtypeNode.value.value; // could be an xtype or an actual class name
         } else if (utils.isIdentifier(xtypeNode.value)) {
             xtypeName = utils.getIdentifierValue(xtypeNode.value);
-        } 
+        }
     } else {
         // TODO - what if no alias/xtype given?  Need to find the 'defaultType'
     }
@@ -1769,7 +1771,7 @@ function getXTypeName (node) {
     return xtypeName;
 }
 
-function getAliasName (node) {
+function getAliasName(node) {
     let aliasNode,
         aliasName = '';
 
@@ -1784,7 +1786,7 @@ function getAliasName (node) {
             aliasName = aliasNode.value.value;
         } else if (utils.isIdentifier(aliasNode.value)) {
             aliasName = utils.getIdentifierValue(aliasNode.value);
-        } 
+        }
     }
 
     // if xtype was passed, prepend 'widget.'
@@ -1794,7 +1796,7 @@ function getAliasName (node) {
     return aliasName;
 }
 
-function getXClassName (node) {
+function getXClassName(node) {
     let xclassNode, xclassName;
 
     if (utils.isProperty(node) && utils.isObjectExpression(node.parent)) {
@@ -1812,7 +1814,7 @@ function getXClassName (node) {
             xclassName = xclassNode.value.value; // could be an xtype or an actual class name
         } else if (utils.isIdentifier(xclassNode.value)) {
             xclassName = utils.getIdentifierValue(xclassNode.value);
-        } 
+        }
     } else {
         // TODO - what if no xclass given?  Need to find the 'defaultType'
     }
@@ -1820,7 +1822,7 @@ function getXClassName (node) {
     return xclassName;
 }
 
-function getDoxiClassByName (className, version) {
+function getDoxiClassByName(className, version) {
     const doxiData = this.getDoxiData(this.getDoxiVersion(version || this.extjsSettings.version));
     const doxiItems = doxiData && doxiData.global && doxiData.global.items;
     let validClassName = doxiData && doxiData.classNamesMap[className];
@@ -1844,7 +1846,7 @@ function getDoxiClassByName (className, version) {
     }
 }
 
-function getDoxiClassByOverride (className, version) {
+function getDoxiClassByOverride(className, version) {
     const doxiData = this.getDoxiData(this.getDoxiVersion(version || this.extjsSettings.version));
     const doxiItems = doxiData && doxiData.global && doxiData.global.items;
     let validClassName = doxiData && doxiData.classNamesMap[className];
@@ -1868,7 +1870,7 @@ function getDoxiClassByOverride (className, version) {
     }
 }
 
-function getDoxiClassByXTypeName (xtypeName, version) {
+function getDoxiClassByXTypeName(xtypeName, version) {
     const doxiData = this.getDoxiData(this.getDoxiVersion(version || this.extjsSettings.version));
     const doxiItems = doxiData && doxiData.global && doxiData.global.items;
 
@@ -1883,7 +1885,7 @@ function getDoxiClassByXTypeName (xtypeName, version) {
     }
 }
 
-function getDoxiClassByAliasName (aliasName, version) {
+function getDoxiClassByAliasName(aliasName, version) {
     const doxiData = this.getDoxiData(this.getDoxiVersion(version || this.extjsSettings.version));
     const doxiItems = doxiData && doxiData.global && doxiData.global.items;
 
@@ -1894,7 +1896,7 @@ function getDoxiClassByAliasName (aliasName, version) {
     }
 }
 
-function getDoxiClassByNode (node, version) {
+function getDoxiClassByNode(node, version) {
     const objectName = node.object && node.object.name;
     if (utils.isMemberExpression(node) && objectName && objectName.indexOf && objectName.indexOf('Ext') === 0) {
         return this.getDoxiClassByName(node.object.name, version);
@@ -1906,7 +1908,7 @@ function getDoxiClassByNode (node, version) {
 }
 
 // TODO in some cases (e.g. singleSelect for Ext.grid.Panel) we need to look through the class chain of the 'requires' config
-function getDoxiClassItem (className, itemType, itemName, version, includeUndocumented) {
+function getDoxiClassItem(className, itemType, itemName, version, includeUndocumented) {
     const doxiClass = this.getDoxiClassByName(className, version);
     let doxiClassItems = doxiClass && doxiClass.items;
     let doxiClassTypeItems = doxiClassItems && doxiClassItems.find(o => o.$type === itemType);
@@ -2049,7 +2051,7 @@ function getDoxiClassItem (className, itemType, itemName, version, includeUndocu
     return doxiClassTypeItem;
 }
 
-function getDoxiClassItemByNode (node, itemType, version, includeUndocumented) {
+function getDoxiClassItemByNode(node, itemType, version, includeUndocumented) {
     let doxiClass = this.getDoxiClassByNode(node, version || this.extjsSettings.version);
     let name;
     let doxiClassItem;
@@ -2083,11 +2085,11 @@ function getDoxiClassItemByNode (node, itemType, version, includeUndocumented) {
     return doxiClassItem;
 }
 
-function getDoxiClassMethod (className, methodName, version, includeUndocumented) {
+function getDoxiClassMethod(className, methodName, version, includeUndocumented) {
     const methodNameLC = methodName && methodName.toLowerCase();
     let retVal = this.getDoxiClassItem(className, 'methods', methodName, version, includeUndocumented);
     let accessorMethod;
-    
+
     // maybe we are dealing with a getter/setter of an accessor config, so check
     if (!retVal && methodNameLC && methodNameLC.indexOf) {
         if (methodNameLC.indexOf('get') === 0 || methodNameLC.indexOf('set') === 0) {
@@ -2105,32 +2107,32 @@ function getDoxiClassMethod (className, methodName, version, includeUndocumented
     return retVal;
 }
 
-function getDoxiClassMethodByNode (node, version, includeUndocumented) {
+function getDoxiClassMethodByNode(node, version, includeUndocumented) {
     return this.getDoxiClassItemByNode(node, 'methods', version, includeUndocumented) ||
         this.getDoxiClassItemByNode(node, 'static-methods', version, includeUndocumented);
 }
 
-function getDoxiClassProperty (className, propertyName, version, includeUndocumented) {
+function getDoxiClassProperty(className, propertyName, version, includeUndocumented) {
     return this.getDoxiClassItem(className, 'properties', propertyName, version, includeUndocumented) ||
         this.getDoxiClassItem(className, 'static-properties', propertyName, version, includeUndocumented);
 }
 
-function getDoxiClassPropertyByNode (node, version, includeUndocumented) {
+function getDoxiClassPropertyByNode(node, version, includeUndocumented) {
     return this.getDoxiClassItemByNode(node, 'properties', version, includeUndocumented) ||
         this.getDoxiClassItemByNode(node, 'static-properties', version, includeUndocumented);
 }
 
-function getDoxiClassConfig (className, configName, version, includeUndocumented) {
+function getDoxiClassConfig(className, configName, version, includeUndocumented) {
     return this.getDoxiClassItem(className, 'configs', configName, version, includeUndocumented);
 }
 
-function getDoxiClassConfigByNode (node, version, includeUndocumented) {
+function getDoxiClassConfigByNode(node, version, includeUndocumented) {
     return this.getDoxiClassItemByNode(node, 'configs', version, includeUndocumented);
 }
 
 // TODO - how can we make sure the replacement is correct?
 // Should we have a 'whitelist' instead of parsing the deprecatedMessage?
-function getDeprecatedItemReplacement (className, doxiItem, itemType) {
+function getDeprecatedItemReplacement(className, doxiItem, itemType) {
     const re = /(.*@link)(.*)(}.*)/; // parse the deprecatedMessage for what is between '@link' and '}'
     let deprecatedParts = doxiItem.deprecatedMessage && doxiItem.deprecatedMessage.replace(re, '$2').replace(/\s/, '');
     let deprecatedClassName;
@@ -2175,19 +2177,19 @@ function getDeprecatedItemReplacement (className, doxiItem, itemType) {
     return deprecatedDoxiItem;
 }
 
-function getDeprecatedConfigReplacement (className, doxiItem) {
+function getDeprecatedConfigReplacement(className, doxiItem) {
     return this.getDeprecatedItemReplacement(className, doxiItem, 'configs');
 }
 
-function getDeprecatedPropertyReplacement (className, doxiItem) {
+function getDeprecatedPropertyReplacement(className, doxiItem) {
     return this.getDeprecatedItemReplacement(className, doxiItem, 'properties');
 }
 
-function getDeprecatedMethodReplacement (className, doxiItem) {
+function getDeprecatedMethodReplacement(className, doxiItem) {
     return this.getDeprecatedItemReplacement(className, doxiItem, 'methods');
 }
 
-function isArrayProp (node) {
+function isArrayProp(node) {
     if (utils.isNewExpression(node.value)) {
         const parsedCallee = utils.parseCallee(node.value);
         return parsedCallee.pop() === 'A';
@@ -2196,7 +2198,7 @@ function isArrayProp (node) {
     return utils.isArrayExpression(node.value);
 }
 
-function isObjectProp (node) {
+function isObjectProp(node) {
     if (utils.isNewExpression(node.value)) {
         const parsedCallee = utils.parseCallee(node.value);
         return parsedCallee.pop() === 'Object';

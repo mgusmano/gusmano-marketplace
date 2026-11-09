@@ -81,7 +81,8 @@ description: Determines Ext JS project details within a repository or workspace,
         - appPath=`<currentAppPath>`
         * to produce basic smoke test to find runtime errors. 
         * Never run puppeteer on its own - only use this Model Context Protocol tool.
-        * Resolve any errors and rerun from the beginning of Smoke Test until no more errors
+        * if `extjs-tools_extjs-capture-logs-puppeteer`was successful, Run Model Context Protocol tool `extjs-tools_sencha-stop` and wait for it to fully complete.
+        * Resolve any errors from `extjs-tools_extjs-capture-logs-puppeteer` and rerun from the beginning of Smoke Test until no more errors
         c. When an error is resolved put a comment `//**UPGRADE FROM SMOKE TEST START**` above the resolution and put a comment `//**UPGRADE FROM SMOKE TEST END**` below the resolution 
       e. Reseach and fix runtime errors from capture logs, do not research warnings.  Inspect `<targetRoot>/ext/build/ext-all-rtl-debug.js` to resolve any runtime errors
       f. If an error is resolved, repeat starting at step 1a. Continue until all errors for `<appFolder>` are resolved.

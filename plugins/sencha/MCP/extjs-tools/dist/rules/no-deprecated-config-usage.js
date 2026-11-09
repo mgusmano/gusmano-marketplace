@@ -29,7 +29,7 @@ module.exports = {
 
         return {
             Program () {
-                extjs.init(context);
+                 extjs.init(context);
             },
             Property (node) {
                 const deprecatedConfig = extjs.getDeprecatedConfig(node);
