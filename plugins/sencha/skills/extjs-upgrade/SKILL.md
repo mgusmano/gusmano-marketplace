@@ -23,7 +23,9 @@ description: Determines Ext JS project details within a repository or workspace,
 
 1. **Determine There Is Exactly One Target Folder**
    * List the top-level folders in `<rootPath>`, **excluding hidden folders** (names beginning with a dot, e.g. `.sencha`, `.git`, `.vscode`).
-   * **Precondition:** this skill interrogates **one and only one** project folder. If there are zero folders, or more than one candidate folder exists, do not proceed — stop the entire skill immediately and report the outcome (no project folder / ambiguous — multiple candidates found).
+   * **Precondition:** this skill interrogates **one and only one** project folder. 
+   * If there are zero folders, do not proceed — stop the entire skill immediately and report the outcome (no project folder / ambiguous — multiple candidates found).
+   * **if there is more than 1 folder**, then askAQuestion listing all folders and set the answer to `<sourceRoot>`
    * **Otherwise, if exactly one folder exists**, the exactly one folder is set to `<sourceRoot>`
 
 2. **Detect Which Project Type (`<projectType>`)**
