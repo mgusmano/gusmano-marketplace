@@ -3,7 +3,7 @@ import type { ClientModule, RenderElement } from 'claude-code'
 import { CHEVRON_CLOSED, CHEVRON_OPEN, CIRCLE_FILLED, CIRCLE_NERD } from './icons'
 
 // rows of an expanded section the host sends at a time; scrolling moves this window
-export const WINDOW = 25
+export const WINDOW = 15
 
 export type ExpanderItem = { text: string; color?: string; dim?: boolean; italic?: boolean }
 export type ExpanderStatus = 'runs' | 'done' | 'fail'
@@ -55,43 +55,6 @@ const clean = (value: string | undefined): string => {
 // Presentational: sections, rows and expanded flags arrive as props and every
 // change leaves as an event for the host to own. Only view state (hover,
 // drag, focus) lives here; the scroll offset is the host's, sent in each section.
-// Diagnostics for the "tree the page cannot draw" error: the tree's serialized size, its node count, its
-// depth, and where any undefined value sits. Posted to the hook only when it changes (ui.message logs it).
-let lastShape = ''
-function reportShape(tree: unknown, surface: { post: (data: unknown) => unknown }) {
-  try {
-    // values that are not plain data: undefined, functions, symbols, bigints, NaN and Infinity (JSON.stringify
-    // drops or nulls the first two kinds and turns the last two into null, so the size check cannot see them)
-    const invalid: string[] = []
-    let nodes = 0
-    let depth = 0
-    const flag = (path: string, what: string) => { if (invalid.length < 10) invalid.push(`${path}: ${what}`) }
-    const walk = (value: unknown, path: string, level: number) => {
-      depth = Math.max(depth, level)
-      if (value === undefined) return flag(path, 'undefined')
-      if (value === null || typeof value === 'string' || typeof value === 'boolean') return
-      if (typeof value === 'number') return Number.isFinite(value) ? undefined : flag(path, String(value))
-      if (Array.isArray(value)) { value.forEach((v, i) => walk(v, `${path}[${i}]`, level)); return }
-      if (typeof value === 'object') {
-        nodes++
-        for (const [k, v] of Object.entries(value)) walk(v, `${path}.${k}`, level + 1)
-        return
-      }
-      flag(path, typeof value)
-    }
-    walk(tree, 'tree', 0)
-    const shape = { chars: JSON.stringify(tree)?.length ?? 0, nodes, depth, invalid }
-    const key = JSON.stringify(shape)
-    if (key !== lastShape) {
-      lastShape = key
-      surface.post({ diagnostic: shape })
-    }
-  }
-  catch {
-    // diagnostics must never break the render
-  }
-}
-
 const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
   const { Box, Text, Code } = surface.elements
   try {
@@ -276,9 +239,7 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
       }
     })
 
-    const tree = <Box flexDirection="column">{props.sections.map(sectionBlock)}</Box>
-    reportShape(tree, surface)
-    return tree
+    return <Box flexDirection="column">{props.sections.map(sectionBlock)}</Box>
   }
   catch (error) {
     return (<Text>Error</Text>)
