@@ -164,6 +164,10 @@ description: Determines Ext JS project details within a repository or workspace,
     * For each `<lintFilesStrings>` read the file and find each //**LINT START** to //**LINT END** only find where `//AI:` with no text to the right - make the changes needed.  if `// additional:` exists prioritize that
     * Read each file from `<lintFilesStrings>` one at a time and fully make changes to that file before moving to the next file
     * If there are no file names in `<lintFilesStrings>` with //**LINT START** to //**LINT END** then continue.
+
+    * For any duplicate functions and stubs, keep the live implementation, comment out the stub, and rename the other copy 
+    * fix any unparseable unreferenced files
+
     * one of the comments is `// AI:` - use that to write any comments to the right of it on what was done to fix the linting issues.  Do not exceed the 1 line comment limit.  If there are multiple // AI: comments, combine them into one comment.
     * do not remove the resolved lint comments, leave them in the code for future reference.
 * Production Build & Validation
