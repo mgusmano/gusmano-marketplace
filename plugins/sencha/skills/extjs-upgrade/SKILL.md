@@ -153,6 +153,7 @@ description: Determines Ext JS project details within a repository or workspace,
 * set `<data>` to  the return from `custom-project.md` 
 * report `<data>` to the user.
 * call Run Model Context Protocol tool `extjs-lint-test` 
+      - progress=true
       - folderPath=`<targetV8Root>`
       - fromVersion=`<data>`.fromVersion
       - applyFixes=true
