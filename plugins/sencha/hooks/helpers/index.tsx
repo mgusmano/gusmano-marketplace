@@ -135,40 +135,37 @@ export function subjectOf(e: ToolCallInput): string | undefined {
 
 export const PANE = 'sencha'
 
-let linesSeen = 0
+// The index of the next progress line this hook has not shown. The server keeps one progress list for every
+// tool; each poll asks for the lines from this index on, so a poll's size does not grow with the run.
+let cursor = 0
+
+export function progressCursor(): number {
+  return cursor
+}
 
 export async function clearAll($: any) {
-  linesSeen = 0
+  cursor = 0
   resetSections($)
 }
 
-// The server keeps one progress list for every tool. Only initialize and generate clear it, so a
-// build or watch starts with the last run's lines and its "polling done" still in the list.
-// listStart is where this tool's own lines begin in that list.
-let listStart = 0
-
-// Called before a progress tool starts, with the list length the server has right now.
+// Called before a progress tool starts, with the list length the server has right now. Only initialize and
+// generate clear the server's list, so a build or watch starts with the last run's lines and its "polling done"
+// still in the list; starting the cursor at the length skips them.
 export function startProgress(length: number) {
-  linesSeen = length
-  listStart = length
+  cursor = length
 }
 
-// True once this tool's lines are in the list and the last one says polling is done.
+// True once this tool's lines are in the batch just read and the last one says polling is done.
 export function progressFinished(items: { name?: string }[]): boolean {
-  const start = items.length < listStart ? 0 : listStart
-  return items.length > start && items[items.length - 1]?.name === 'polling done'
+  return items.length > 0 && items[items.length - 1]?.name === 'polling done'
 }
 
-export async function appendLines($: EngineInterface, items: { name?: string }[]): Promise<number> {
+// Shows the lines a read returned and moves the cursor to `next`, the server's list length after them.
+export async function appendLines($: EngineInterface, items: { name?: string }[], next: number): Promise<number> {
   //$.ui.log('appendLines')
-  if (items.length < linesSeen) {
-    // the server cleared its list for a new run, so this tool's lines start at the top
-    linesSeen = 0
-    listStart = 0
-  }
+  cursor = next
   // blank lines are kept so the output keeps its spacing; only the lone '.' lines are dropped
-  const fresh = items.slice(linesSeen).flatMap(item => item.name === undefined || item.name.trim() === '.' ? [] : [{ name: item.name }])
-  linesSeen = items.length
+  const fresh = items.flatMap(item => item.name === undefined || item.name.trim() === '.' ? [] : [{ name: item.name }])
   if (fresh.length > 0) {
     for (const item of fresh) {
       // $.ui.log(`item.name ${item.name}`)

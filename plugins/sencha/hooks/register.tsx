@@ -1,6 +1,6 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, EngineInterface, RenderSurface, PaneOpenArgs, Args, Frozen, Next } from 'claude-code'
-import { versionString, doError, renderMessage, clearAll, appendLines, startProgress, progressFinished, relativeTo, PANE, LOGO_SVG, LOGO_PNG } from './helpers'
+import { versionString, doError, renderMessage, clearAll, appendLines, startProgress, progressCursor, progressFinished, relativeTo, PANE, LOGO_SVG, LOGO_PNG } from './helpers'
 import { commandSencha } from './commands/commandSencha'
 import { commandCallit } from './commands/commandCallit'
 import { commandAsk } from './commands/commandAsk'
@@ -255,15 +255,19 @@ export const register: Register = on => {
       // A failed read (a denied call, an unexpected result shape, or unparseable text) must not end polling:
       // the tool keeps running, so the error is shown once in the section and the next poll tries again.
       let lastReadError = ''
-      const readProgress = async (): Promise<{ name?: string }[] | undefined> => {
+      // Reads the lines from index `since` on (none when since is left out) and the list's length after them.
+      // The server sends only the new lines, so a poll stays small however long the run is.
+      const readProgress = async (since?: number): Promise<{ data: { name?: string }[]; next: number } | undefined> => {
         try {
-          const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+          const args = since === undefined ? { tool: testGlobalGetTool, name: testGlobalGetName } : { tool: testGlobalGetTool, name: testGlobalGetName, since }
+          const testGlobalGetResult: any = await $.tool.call(args)
           const text = testGlobalGetResult?.result?.[0]?.text
           if (typeof text !== 'string') {
             // show what came back, so a missing or odd response can be told apart from a parse error
             throw new Error(`no text in result: ${JSON.stringify(testGlobalGetResult)?.slice(0, 200)}`)
           }
-          return JSON.parse(text).data as { name?: string }[]
+          const parsed = JSON.parse(text) as { data: { name?: string }[]; next: number }
+          return { data: parsed.data, next: parsed.next }
         } catch (err: any) {
           const message = `progress read failed: ${err?.message ?? String(err)}`
           if (message !== lastReadError) {
@@ -274,16 +278,17 @@ export const register: Register = on => {
         }
       }
       // Count the server's list before this tool starts, so its leftover lines and "polling done" are skipped
-      startProgress((await readProgress())?.length ?? 0)
+      startProgress((await readProgress())?.next ?? 0)
       out = next(e).then(toolResult => { theResult = toolResult })
       let polledDone = false
       let pollsAfterResult = 0
       while (!polledDone) {
         //$.ui.log(`in polling while loop for ${e.tool}`)
-        const data = await readProgress()
-        if (data !== undefined) {
-          await appendLines($, data)
-          if (progressFinished(data)) polledDone = true
+        // a failed read leaves the cursor where it was, so the next poll asks for the same lines again
+        const read = await readProgress(progressCursor())
+        if (read !== undefined) {
+          await appendLines($, read.data, read.next)
+          if (progressFinished(read.data)) polledDone = true
         }
         // safety: if the progress never says done, stop a few polls after the tool's own result
         if (theResult !== undefined && ++pollsAfterResult >= 3) {
