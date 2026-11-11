@@ -223,12 +223,16 @@ export const register: Register = on => {
     //$.ui.log(`tool.call ${JSON.stringify(e)}`)
     //const isProgress = 'progress' in e ? e.progress : undefined;
     let isProgress = false;
-    if (e.tool === `mcp__plugin_sencha_extjs-tools__sencha-app-watch`) {
+    if (
+      e.tool === `mcp__plugin_sencha_extjs-tools__sencha-app-watch` ||
+      e.tool === `mcp__plugin_sencha_extjs-tools__extjs-lint-test`
+    ) {
       isProgress = true;
     }
     if ('progress' in e) {
       isProgress = true;
     }
+    //$.ui.log(`isProgress ${isProgress} ${e.tool}`)
     let stop = false;
     let out: any;
     let detail: string | undefined
@@ -244,31 +248,43 @@ export const register: Register = on => {
     }
     let theResult;
     if (isProgress) {
-      //$.ui.log(`isProgress ${isProgress}`)
       // The tool's own result can arrive before its last progress lines. Keep polling until the
       // progress says it is done, so every line lands in this section before the next tool starts.
       const testGlobalGetTool = `mcp__plugin_sencha_extjs-tools__test-global-get`;
       const testGlobalGetName = 'test-global-get';
-      const readProgress = async () => {
-        //$.ui.log(`in readProgress`)
-        const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
-        //$.ui.log(`after tool call: ${testGlobalGetTool}`)
-        //$.ui.log(`after tool call2: ${JSON.stringify(testGlobalGetResult)}`)
-        // mjg here we could get deny
-        //await addItemToLatestSection($, `${JSON.stringify(testGlobalGetResult)}`, '#e64e4e', true)
-        //await addItemToLatestSection($, `testGlobalGetResult here...`, '#e64e4e', true)
-        return JSON.parse(testGlobalGetResult.result[0].text).data as { name?: string }[]
+      // A failed read (a denied call, an unexpected result shape, or unparseable text) must not end polling:
+      // the tool keeps running, so the error is shown once in the section and the next poll tries again.
+      let lastReadError = ''
+      const readProgress = async (): Promise<{ name?: string }[] | undefined> => {
+        try {
+          const testGlobalGetResult: any = await $.tool.call({ tool: testGlobalGetTool, name: testGlobalGetName })
+          const text = testGlobalGetResult?.result?.[0]?.text
+          if (typeof text !== 'string') {
+            // show what came back, so a missing or odd response can be told apart from a parse error
+            throw new Error(`no text in result: ${JSON.stringify(testGlobalGetResult)?.slice(0, 200)}`)
+          }
+          return JSON.parse(text).data as { name?: string }[]
+        } catch (err: any) {
+          const message = `progress read failed: ${err?.message ?? String(err)}`
+          if (message !== lastReadError) {
+            lastReadError = message
+            await addItemToLatestSection($, message, '#e64e4e', true)
+          }
+          return undefined
+        }
       }
       // Count the server's list before this tool starts, so its leftover lines and "polling done" are skipped
-      startProgress((await readProgress()).length)
+      startProgress((await readProgress())?.length ?? 0)
       out = next(e).then(toolResult => { theResult = toolResult })
       let polledDone = false
       let pollsAfterResult = 0
       while (!polledDone) {
         //$.ui.log(`in polling while loop for ${e.tool}`)
         const data = await readProgress()
-        await appendLines($, data)
-        if (progressFinished(data)) polledDone = true
+        if (data !== undefined) {
+          await appendLines($, data)
+          if (progressFinished(data)) polledDone = true
+        }
         // safety: if the progress never says done, stop a few polls after the tool's own result
         if (theResult !== undefined && ++pollsAfterResult >= 3) {
           //$.ui.log(`theResult ${theResult}`)

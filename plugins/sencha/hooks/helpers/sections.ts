@@ -45,6 +45,7 @@ export function expanderProps(dropped: string[] = []): ExpanderProps {
     sections: cleanData(list.map(view), 'sections', dropped),
     titleColor: 'cyan',
     itemColor: 'yellow',
+    itemMonospace: true,
     hoverBg: '#14532d',
     unicode: true,
   }

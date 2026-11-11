@@ -3,7 +3,7 @@ import type { ClientModule, RenderElement } from 'claude-code'
 import { CHEVRON_CLOSED, CHEVRON_OPEN, CIRCLE_FILLED, CIRCLE_NERD } from './icons'
 
 // rows of an expanded section the host sends at a time; scrolling moves this window
-export const WINDOW = 75
+export const WINDOW = 50
 
 export type ExpanderItem = { text: string; color?: string; dim?: boolean; italic?: boolean }
 export type ExpanderStatus = 'runs' | 'done' | 'fail'
@@ -27,6 +27,9 @@ export type ExpanderProps = {
   sections: ExpanderView[]
   titleColor?: string
   itemColor?: string
+  // draw rows that use the default item color (the progress lines) with the host's code font, so columns line up.
+  // Code takes no color, so these rows show in the default text color rather than itemColor.
+  itemMonospace?: boolean
   hoverBg?: string
   unicode?: boolean
 }
@@ -44,7 +47,7 @@ const toRows = (items?: (string | ExpanderItem)[]): Row[] =>
 // change leaves as an event for the host to own. Only view state (hover,
 // drag, focus) lives here; the scroll offset is the host's, sent in each section.
 const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
-  const { Box, Text } = surface.elements
+  const { Box, Text, Code } = surface.elements
   try {
     let state = surface.state
     if (state === undefined) {
@@ -125,7 +128,9 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
                 backgroundColor={hoverOn(sec.id, 1 + i) ? props.hoverBg : undefined}
               >
                 <Box marginLeft={3} flexShrink={1} overflow="hidden">
-                  <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic} wrap="wrap">{it.text}</Text>
+                  {it.color === undefined && props.itemMonospace
+                    ? <Code source={it.text} wrap="truncate-end" />
+                    : <Text color={it.color ?? props.itemColor} dimColor={it.dim} italic={it.italic} wrap="wrap">{it.text}</Text>}
                 </Box>
                 <Box flexGrow={1} />
                 {clipped ? <Text>{i >= barPos && i < barPos + barSize ? '┃' : '│'}</Text> : null}
