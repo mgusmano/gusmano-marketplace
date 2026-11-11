@@ -40,12 +40,30 @@ export function scrollSection(id: string, offset: number) {
   follow = { ...follow, [id]: next >= max }
 }
 
+// A surface tree must stay under 100,000 characters serialized and 20,000 nodes, or the element unmounts.
+// Every section is sent on each render, so keep the newest ones that fit a character budget (headroom
+// is left for the expanded section's window of rows) and a section count (about a dozen nodes each).
+const TREE_CHARS = 60_000
+const MAX_SECTIONS = 200
+function fittingSections(): ExpanderView[] {
+  const kept: ExpanderView[] = []
+  let budget = TREE_CHARS
+  for (let i = list.length - 1; i >= 0 && kept.length < MAX_SECTIONS; i--) {
+    const v = view(list[i])
+    const size = JSON.stringify(v).length
+    if (size > budget) break
+    budget -= size
+    kept.unshift(v)
+  }
+  return kept
+}
+
 export function expanderProps(dropped: string[] = []): ExpanderProps {
   return {
-    sections: cleanData(list.map(view), 'sections', dropped),
+    sections: cleanData(fittingSections(), 'sections', dropped),
     titleColor: 'cyan',
     itemColor: 'yellow',
-    itemMonospace: true,
+    itemMonospace: false, // off: the Code element made the page refuse the tree; these rows use Text
     hoverBg: '#14532d',
     unicode: true,
   }

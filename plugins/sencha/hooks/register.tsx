@@ -324,6 +324,9 @@ export const register: Register = on => {
 
   // Any button that reports hover: its hint shows in the status bar and in the spot for its place.
   on('ui.message', async ($, e, next) => {
+    // expander tree diagnostics posted by components/expander.tsx (reportShape)
+    const diagnostic = (e.data as { diagnostic?: unknown } | undefined)?.diagnostic
+    if (diagnostic !== undefined) $.ui.log(`expander tree: ${JSON.stringify(diagnostic)}`)
     const data = e.data as { over?: boolean; hint?: string; place?: 'above' | 'pane' } | undefined
     if (data?.over === undefined || data.place === undefined) return next(e)
     const hint = data.over ? data.hint : undefined
