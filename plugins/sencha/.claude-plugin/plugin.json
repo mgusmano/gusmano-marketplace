@@ -1,6 +1,6 @@
 {
   "name": "sencha",
-  "version": "0.0.56",
+  "version": "0.0.57",
   "description": "Sencha Claude Code Mod",
   "displayName": "Sencha",
   "types": "./types/index.d.ts",
@@ -28,7 +28,9 @@
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/MCP/extjs-tools/dist/extjs-tools.mjs"
       ],
-      "env": {}
+      "env": {
+        "PROCESS_RELAY_PORT": "${PROCESS_RELAY_PORT:-}"
+      }
     },
     "extjs-dependency-graph": {
       "type": "stdio",

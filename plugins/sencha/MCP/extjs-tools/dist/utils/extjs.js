@@ -762,7 +762,6 @@ function getExtClassConfig(node, version, includeUndocumented) {
                 const fieldTypePropertyNode = node.parent.properties && node.parent.properties.find(o => o.key && o.key.name === 'type');
                 if (fieldTypePropertyNode && utils.isLiteral(fieldTypePropertyNode.value)) {
                     let fieldTypeClassObject;
-                    console.error(`extjs.js: version`, version)
                     if (version?.indexOf('4') === 0) {
                         fieldTypeClassObject = this.getDoxiClassByName('Ext.data.Field', version);
                     } else {
