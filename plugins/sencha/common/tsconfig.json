@@ -1,0 +1,7 @@
+{
+  "extends": "../.claude-plugin/types/tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["../.claude-plugin/types"]
+  },
+  "include": ["./index.tsx"]
+}

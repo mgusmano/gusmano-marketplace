@@ -39,7 +39,8 @@ export function doError($: any, e: any, next?: { error?: { kind?: string; messag
   const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
   // JSON.stringify drops an Error's message, so show name and message for those
   const detail = e instanceof Error || typeof e?.message === 'string' ? `${e.name}: ${e.message}` : JSON.stringify(e)
-  $.ui.log(`doError3 error${why}: ${detail}`)
+  //$.ui.log(`doError3 error${why}: ${detail}`)
+  $.ui.log(`doError3 error${why}`)
  // $.ui.log(`doError2 error:${JSON.stringify(next)}`)
 }
 
@@ -166,9 +167,10 @@ export async function appendLines($: EngineInterface, items: { name?: string }[]
   cursor = next
   // blank lines are kept so the output keeps its spacing; only the lone '.' lines are dropped
   const fresh = items.flatMap(item => item.name === undefined || item.name.trim() === '.' ? [] : [{ name: item.name }])
+  // each progress line is one line of the expander's section (a long-running section moves its lines to a
+  // temporary file; see helpers/sections.ts). They are not written to the main transcript.
   if (fresh.length > 0) {
     for (const item of fresh) {
-      // $.ui.log(`item.name ${item.name}`)
       await addItemToLatestSection($, item.name)
     }
     await $.ui.scroll({ in: PANE, to: 'end' })

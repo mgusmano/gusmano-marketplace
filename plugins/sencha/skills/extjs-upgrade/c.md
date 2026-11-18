@@ -13,8 +13,8 @@
       - fromVersion="4.2.6"
       - applyFixes=false
 * Make all LINT fixes
-    * for each string `<file>` in the files array  for `<targetV8Root>`, find each //**LINT START** to //**LINT END** and make the changes needed.  if // additional: exists prioritize that
-    * If there are no file names in `<augmentedFiles>` with //**LINT START** to //**LINT END** then continue.
+    * for each string `<file>` in the files array  for `<targetV8Root>`, find each `//** LINT START**` to `//** LINT END**` and make the changes needed.  if // additional: exists prioritize that
+    * If there are no file names in `<augmentedFiles>` with `// **LINT START**` to `// **LINT END**` then continue.
     * one of the comments is `// AI:` - use that to write any comments to the right of it on what was done to fix the linting issues.  Do not exceed the 1 line comment limit.  If there are multiple // AI: comments, combine them into one comment. never leave this blank - always comment on every instance.
     * do not remove the resolved lint comments, leave them in the code for future reference.
     * never remove any source code, always comment it out as a comment - never on a separate line - always to the right of the modified source code line starting with `//**LINT COMMENTED OUT**`  Add a comment `// AI: ` to the right of the commented code explaining why it was commented out - always on the same line, never on a separate line.  If there are multiple // AI: comments, combine them into one comment.

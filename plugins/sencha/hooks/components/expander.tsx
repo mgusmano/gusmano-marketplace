@@ -14,6 +14,16 @@ export type ExpanderSection = {
   status?: ExpanderStatus
   subject?: string
   detail?: string
+  // the session id, drawn in light gray ahead of the message
+  session?: string
+  // the subagent loop's id, for a section run by a subagent; drawn in light gray after the session id
+  agent?: string
+  // the label of a tool call that starts a subagent ("subagent call (type)"); drawn in amber
+  subagent?: string
+  // the tool_use_id of the call this section is for (the tool call's own id); drawn in light gray
+  toolId?: string
+  // for a section run by a subagent: the tool_use_id of the Agent call that started that subagent; light gray
+  parentTool?: string
   items?: (string | ExpanderItem)[]
   expanded?: boolean
 }
@@ -47,20 +57,34 @@ const toRows = (items?: (string | ExpanderItem)[]): Row[] =>
 // would draw past the row's bounds or make the tree malformed, and a row longer than the room is cut.
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/g
 const ROW_CHARS = 500
-const clean = (value: string | undefined): string => {
+const clean = (value: string | undefined, max = ROW_CHARS): string => {
   const text = (value ?? '').replace(/\t/g, '    ').replace(CONTROL, ' ')
-  return text.length > ROW_CHARS ? `${text.slice(0, ROW_CHARS - 1)}…` : text
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
 // Presentational: sections, rows and expanded flags arrive as props and every
 // change leaves as an event for the host to own. Only view state (hover,
 // drag, focus) lives here; the scroll offset is the host's, sent in each section.
+// A tree past 100,000 characters serialized unmounts the expander. The limit leaves room for the host's own wrapping.
+const TREE_LIMIT = 80_000
+
+// The tree as text for the hook log. A post carries at most 100,000 characters, so the text is cut short.
+let lastDump = ''
+function dump(tree: unknown): string {
+  try {
+    return (JSON.stringify(tree) ?? 'undefined').slice(0, 50000)
+  }
+  catch (error: any) {
+    return `dump failed: ${error?.message ?? String(error)}`
+  }
+}
+
 const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
   const { Box, Text, Code } = surface.elements
   try {
     let state = surface.state
     if (state === undefined) {
-      //surface.post({ log: 'in Expander' })
+      surface.post({ log: 'in Expander' })
       state = { hover: null, drag: false, focus: props.sections[0]?.id ?? null }
       surface.setState(state)
     }
@@ -69,6 +93,8 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
     const caretOpen = props.unicode ? '▼' : CHEVRON_OPEN
     const caretClosed = props.unicode ? '▶' : CHEVRON_CLOSED
     const cap = WINDOW
+    // the sections this render drew (see the tree limit below); the pointer maps rows through this list
+    let drawn: ExpanderView[] = props.sections
     const sectionOf = (id: string) => props.sections.find(s => s.id === id)
     const focusId = (): string | null => {
       const s = cur()
@@ -81,7 +107,8 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
     const scrollTo = (id: string, offset: number) => surface.post({ scroll: { section: id, offset } })
     const hits = (): { sec: string; row: number }[] => {
       const list: { sec: string; row: number }[] = []
-      props.sections.forEach(s => {
+      // the rows as this render drew them: sections cut to fit the tree limit are not in the list
+      drawn.forEach(s => {
         list.push({ sec: s.id, row: 0 })
         if (s.expanded) toRows(s.items).forEach((_, ii) => list.push({ sec: s.id, row: 1 + ii }))
       })
@@ -89,9 +116,12 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
     }
     const hoverOn = (sec: string, row: number) =>
       state.hover !== null && state.hover.sec === sec && state.hover.row === row
-    const sectionBlock = (sec: ExpanderView): RenderElement => {
+    // One section: a compact header row (the root node, which is never cut), then its rows. `rows` is how many of
+    // its window's rows to draw; `titleCap` and `metaCap` trim the title and the message, detail and subject, so the
+    // render can fit every header in the tree limit.
+    const sectionBlock = (sec: ExpanderView, rows: number, titleCap: number, metaCap: number): RenderElement[] => {
       try {
-        const items = toRows(sec.items)
+        const items = toRows(sec.items).slice(0, rows)
         const hasItems = sec.total > 0
         const glyph = hasItems ? (sec.expanded ? caretOpen : caretClosed) : (props.unicode ? CIRCLE_FILLED : CIRCLE_NERD)
         const maxScroll = Math.max(0, sec.total - cap)
@@ -104,55 +134,68 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
             : sec.status === 'done' ? 'success'
               : sec.status === 'fail' ? 'error'
                 : props.titleColor
-        const title = clean(sec.title)
-        const message = clean(sec.message)
-        const detail = clean(sec.detail)
-        const right = clean(sec.subject)
-        //return (<Text>SectionBlock title:{sec.title} message:{sec.message} detail:{sec.detail?.length}</Text>)
-        return (
-          <Box key={sec.id} flexDirection="column">
-            <Box
-              flexDirection="row"
-              height={1}
-              overflow="hidden"
-              {...(hoverOn(sec.id, 0) ? { backgroundColor: props.hoverBg } : {})}
-            >
-              <Box width={17} flexShrink={0} flexDirection="row">
-                {/* fixed 3-column gutter so the title starts at column 3 whatever the glyph's width */}
-                <Box width={3} flexShrink={0}>
-                  <Text color={titleColor}>{` ${glyph}`}</Text>
-                </Box>
-                <Text color={titleColor} wrap="wrap">{title}</Text>
-              </Box>
-              {message ? <Box flexShrink={1} overflow="hidden"><Text color="white" wrap="wrap">{message}</Text></Box> : null}
-              {detail ? <Box flexShrink={1} overflow="hidden"><Text color="#c4b5fd" italic wrap="wrap">{` ${detail}`}</Text></Box> : null}
-              {right ? <Text color={titleColor} dimColor wrap="wrap">{right}</Text> : null}
-              <Box flexGrow={1} />
+        // the first column is as wide as the longest title (at least 11), so the second column lines up in every section
+        const titleCol = Math.max(11,...props.sections.map(s => Math.min(s.title.length, titleCap)))
+        const title = clean(sec.title, titleCap)
+        //const session = clean(sec.session, metaCap)
+        //const agent = sec.agent ? clean(`agent ${sec.agent}`, metaCap) : ''
+        const subagent = sec.subagent ? clean(sec.subagent, metaCap) : ''
+        //const toolId = sec.toolId ? clean(`tool: ${sec.toolId}`, metaCap) : ''
+        const meta = clean([sec.message, sec.detail, sec.subject].filter(Boolean).join(' · '), metaCap)
+        // the second column, in order: session and agent ids in light gray, a subagent call in amber, then the rest
+        const parts: { text: string; color?: string }[] = []
+        //if (session) parts.push({ text: 'session: ' + session, color: '#9ca3af' })
+        //if (agent) parts.push({ text: agent, color: '#9ca3af' })
+        //if (toolId) parts.push({ text: toolId, color: '#9ca3af' })
+        if (meta) parts.push({ text: meta, color: titleColor })
+        if (subagent) parts.push({ text: subagent, color: '#f59e0b' })
+        // fixed-width cells, not padded text: the glyph gutter, then the title column, then the rest. Each
+        // column starts at the same cell in every section whatever the glyph's or the title's width.
+        const head = (
+          <Box
+            key={sec.id}
+            flexDirection="row"
+            height={1}
+            overflow="hidden"
+            {...(hoverOn(sec.id, 0) ? { backgroundColor: props.hoverBg } : {})}
+          >
+            <Box width={3} flexShrink={0}>
+              <Text color={titleColor}>{` ${glyph}`}</Text>
             </Box>
-            {/* {shown.map((it, i) => (<Text>{it.text}</Text>
-            ))} */}
-            {shown.map((it, i) => (
-              <Box
-                key={`${sec.id}-${i}`}
-                flexDirection="row"
-                height={1}
-                overflow="hidden"
-                {...(hoverOn(sec.id, 1 + i) ? { backgroundColor: props.hoverBg } : {})}
-              >
-                <Box marginLeft={3} flexShrink={1} overflow="hidden">
-                  {it.color === undefined && props.itemMonospace
-                    ? <Code source={clean(it.text)} wrap="truncate-end" />
-                    : <Text color={it.color ?? props.itemColor} {...(it.dim ? { dimColor: true } : {})} {...(it.italic ? { italic: true } : {})} wrap="wrap">{clean(it.text)}</Text>}
-                </Box>
-                <Box flexGrow={1} />
-                {clipped ? <Text>{i >= barPos && i < barPos + barSize ? '┃' : '│'}</Text> : null}
+            <Box width={titleCol} flexShrink={0} overflow="hidden">
+              <Text color={titleColor} wrap="truncate-end">{title}</Text>
+            </Box>
+            {parts.length > 0 ? (
+              <Box flexDirection="row" flexShrink={1} overflow="hidden">
+                {parts.map((p, i) => (
+                  <Text key={String(i)} color={p.color} wrap="truncate-end">{i === 0 ? p.text : `  ${p.text}`}</Text>
+                ))}
               </Box>
-            ))}
+            ) : null}
           </Box>
         )
+        const rowEls = shown.map((it, i) => (
+          <Box
+            key={`${sec.id}-${i}`}
+            flexDirection="row"
+            height={1}
+            overflow="hidden"
+            {...(hoverOn(sec.id, 1 + i) ? { backgroundColor: props.hoverBg } : {})}
+          >
+            <Box marginLeft={3} flexShrink={1} overflow="hidden">
+              {it.color === undefined && props.itemMonospace
+                ? <Code source={clean(it.text)} wrap="truncate-end" />
+                : <Text color={it.color ?? props.itemColor} {...(it.dim ? { dimColor: true } : {})} {...(it.italic ? { italic: true } : {})} wrap="wrap">{clean(it.text)}</Text>}
+            </Box>
+            <Box flexGrow={1} />
+
+            {clipped ? <Text>{i >= barPos && i < barPos + barSize ? '┃' : '│'}</Text> : null}
+          </Box>
+        ))
+        return [head, ...rowEls]
       }
       catch (error: any) {
-        return (<Text>ERROR: {error.toString()}</Text>)
+        return [<Text>ERROR: {error.toString()}</Text>]
       }
     }
 
@@ -239,7 +282,48 @@ const Expander: ClientModule<ExpanderProps, Local> = (props, surface) => {
       }
     })
 
-    return <Box flexDirection="column">{props.sections.map(sectionBlock)}</Box>
+    // Fit the tree to TREE_LIMIT without losing a section. Every header is drawn: the title and meta are trimmed
+    // (in steps) only as far as all headers fit in 60% of the limit. The expanded rows then take what is left, and
+    // are cut before anything else. The sizes are measured on the elements, since each element adds its own props.
+    const measure = (x: unknown): number => JSON.stringify(x)?.length ?? 0
+    const CAPS: [number, number][] = [[160, 400], [80, 160], [40, 60], [24, 0]]
+    let [titleCap, metaCap] = CAPS[CAPS.length - 1] ?? [24, 0]
+    for (const [t, m] of CAPS) {
+      const headers = props.sections.reduce((n, sec) => n + measure(sectionBlock(sec, 0, t, m)), 0)
+      if (headers <= TREE_LIMIT * 0.6) { titleCap = t; metaCap = m; break }
+    }
+    let budget = TREE_LIMIT - props.sections.reduce((n, sec) => n + measure(sectionBlock(sec, 0, titleCap, metaCap)), 0)
+    const blocks: RenderElement[] = []
+    const kept: ExpanderView[] = []
+    for (const sec of props.sections) {
+      const base = measure(sectionBlock(sec, 0, titleCap, metaCap))
+      let rows = 0
+      if (sec.expanded && sec.items.length > 0) {
+        // the most rows of this section that still fit: the size grows with the rows, so search for the largest
+        const fits = (n: number) => measure(sectionBlock(sec, n, titleCap, metaCap)) - base <= budget
+        let lo = 0
+        let hi = sec.items.length
+        while (lo < hi) {
+          const mid = Math.floor((lo + hi + 1) / 2)
+          if (fits(mid)) lo = mid
+          else hi = mid - 1
+        }
+        rows = lo
+        budget -= measure(sectionBlock(sec, rows, titleCap, metaCap)) - base
+      }
+      blocks.push(...sectionBlock(sec, rows, titleCap, metaCap))
+      kept.push({ ...sec, items: sec.items.slice(0, rows) })
+    }
+    drawn = kept
+    const b = blocks
+    // $.ui.log is hooks-only; the surface sends the tree's text up with post, and register.tsx logs it (ui.message)
+    const text = dump(b)
+    if (text !== lastDump) {
+      lastDump = text
+      surface.post({ debug: text })
+    }
+
+    return <Box flexDirection="column">{b}</Box>
   }
   catch (error) {
     return (<Text>Error</Text>)

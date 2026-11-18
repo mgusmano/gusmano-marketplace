@@ -1,6 +1,11 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, EngineInterface, RenderSurface, PaneOpenArgs, Args, Frozen, Next } from 'claude-code'
-import { versionString, doError, renderMessage, clearAll, appendLines, startProgress, progressCursor, progressFinished, relativeTo, PANE, LOGO_SVG, LOGO_PNG } from './helpers'
+import type { Register, EngineInterface, RenderSurface, PaneOpenArgs, Args, Frozen, Next, UiLogOptions, UiLogSink } from 'claude-code'
+import {
+  renderMessage, clearAll, appendLines, startProgress, progressCursor, progressFinished, relativeTo, PANE
+} from './helpers'
+import { versionString, doError, LOGO_SVG, LOGO_PNG } from '../common'
+
+import { renderCommandOutput, renderToolProgress } from './helpers/render'
 import { commandSencha } from './commands/commandSencha'
 import { commandCallit } from './commands/commandCallit'
 import { commandAsk } from './commands/commandAsk'
@@ -11,7 +16,7 @@ import { Header } from './components/header'
 import { HELP_PANE, HELP_MARKDOWN } from './helpers/help'
 import {
   sections, expanderProps, scrollSection, writeExpanderFile, expandAll, collapseAll, toggleSection, addItem, addSection,
-  addItemToLatestSection, setSectionStatus, runTests,
+  addItemToLatestSection, setSectionStatus, runTests, setSessionTag, linkSpawn, parentToolOf,
 } from './helpers/sections'
 
 const spaces = 0
@@ -82,20 +87,21 @@ const logList = async ($: EngineInterface, kind: 'tool' | 'command' | 'config' |
 export const register: Register = on => {
   let startedAt = 0
   let sessionCwd = ''
+  // the session's id, read at session.start; shown in the pane and in the names of exported files
+  let sessionId = ''
+  // current date/time: epoch seconds, and a display string (same format as session.start uses)
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  const nowDisplay = new Date(nowSeconds * 1000).toLocaleString()
   let hoverHints: Partial<Record<'above' | 'pane', string>> = {}
 
   on('session.start', async ($, e, next) => {
     //$.ui.log(`session.start:e ${JSON.stringify(e)}`)
-
-
     //$.ui.log(`env ${await $.env.get('CLAUDE_CODE_DEBUG_LOGS_DIR')}`)
     // $.ui.log(`$.plugin.name ${$.plugin.name}`)
     //$.ui.log(`$.plugin.root ${$.plugin.root}`)
-
     //$.telemetry.log
     //  let model = $.
     //  $.ui.log(`session.start:model ${JSON.stringify(model)}`)
-
     //await logList($, 'tool')
     //await logList($, 'command')
     //await logList($, 'config')
@@ -104,6 +110,8 @@ export const register: Register = on => {
 
     await refresh($)
     sessionCwd = e.cwd
+    sessionId = await $.session.id()
+    setSessionTag(sessionId)
     await $.command.register({ name: 'sencha', description: 'open the Sencha side pane' })
     await $.command.register({ name: 'callit', description: 'call a tool' })
     await $.command.register({ name: 'ask', description: 'ask example' })
@@ -114,6 +122,29 @@ export const register: Register = on => {
     await addItemToLatestSection($, `sessionid: ${await $.session.id()}`, '#c4b5fd', true)
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
+  on('agent.spawn', async ($, e, next) => {
+    const res = await next(e)
+    //$.ui.log(`agent.spawn:e ${JSON.stringify(e)}`)
+    // if ('agentId' in res && res.agentId) {
+    //   let name = e.description
+    //   try {
+    //     name = agentName(
+    //       { prompt: e.prompt, description: e.description, subagentType: e.subagentType, name: e.name, cwd: e.cwd },
+    //       parts,
+    //       root,
+    //     )
+    //   } catch {
+    //     // keep the description
+    //   }
+    //   known.set(res.agentId, { name, description: e.description, parentId: e.parentAgentId })
+    //   safe(() => office.spawn(res.agentId!, name, e.description, e.parentAgentId))
+    // }
+    // the subagent's id (the result) is linked to the Agent call that started it (e.tool_use_id)
+    if ('agentId' in res && res.agentId !== undefined) linkSpawn($, e.tool_use_id, res.agentId)
+    return res
+  })
+
 
   on('ui.close', async ($, e, next) => {
     const message = JSON.stringify(e, null, spaces)
@@ -182,7 +213,15 @@ export const register: Register = on => {
     catch (error: any) {
       message = error.toString()
     }
-    await addSection($, 'turn.start', message)
+    await addSection($, 'turn.start', message, undefined, { agent: e.agentId })
+    // every field the event carries, one line each under the section; for a subagent's turn, the Agent call
+    // that started it, which is what the loop id correlates to
+    for (const [key, value] of Object.entries(e)) {
+      if (value === undefined) continue
+      await addItemToLatestSection($, `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`, '#c4b5fd', true)
+    }
+    const parent = parentToolOf(e.agentId)
+    if (parent !== undefined) await addItemToLatestSection($, `parent tool_use_id (Agent call that started this subagent): ${parent}`, '#c4b5fd', true)
 
     startedAt = await $.clock.now()
     const nextE = await next(e)
@@ -204,16 +243,16 @@ export const register: Register = on => {
     // $.ui.log(`turn.complete:e ${JSON.stringify(e)}`)
     // $.ui.log(`turn.complete:result ${JSON.stringify(result)}`)
 
-    await addSection($, 'turn.complete', message)
+    await addSection($, 'turn.complete', message, undefined, { agent: e.agentId })
     const usage = `${'usage'}: ${JSON.stringify(result?.usage)}`
     //$.ui.log(usage)
     await addItemToLatestSection($, usage, '#c4b5fd')
 
     if (isExtJSUpgrade === true) {
-      await writeExpanderFile($)
+      //await writeExpanderFile($)
     }
     else {
-      $.ui.log(`expander file not written`)
+      //$.ui.log(`expander file not written`)
     }
 
     return result;
@@ -240,7 +279,17 @@ export const register: Register = on => {
     if (e.tool === 'Read') detail = relativeTo(sessionCwd, e.file_path)
     if (e.tool === 'Edit') detail = relativeTo(sessionCwd, (e as { file_path?: string }).file_path)
     if (e.tool === 'Write') detail = relativeTo(sessionCwd, (e as { file_path?: string }).file_path)
-    const sectionId = await addSection($, 'tool.call', e.tool, detail, { status: 'runs' })
+    // e.agentId is set when the call runs in a subagent's loop; absent on the main loop
+    // an Agent call starts a subagent: its section says so, with the subagent type the call names
+    let subagent: string | undefined
+    if (e.tool === 'Agent') {
+      const input = e as { subagent_type?: unknown; subagentType?: unknown }
+      const type = input.subagent_type ?? input.subagentType
+      subagent = type !== undefined ? `subagent call (${String(type)})` : 'subagent call'
+    }
+    // the call's own tool_use_id: an Agent call's id is what its subagent's sections are correlated to
+    const toolId = (e as { tool_use_id?: string }).tool_use_id
+    const sectionId = await addSection($, 'tool.call', e.tool, detail, { status: 'runs', agent: e.agentId, subagent, toolId })
     for (const [key, value] of Object.entries(e)) {
       if (key === 'tool' || key === 'tool_use_id' || value === undefined) continue
       const text = typeof value === 'string' ? value : JSON.stringify(value)
@@ -259,7 +308,7 @@ export const register: Register = on => {
       // The server sends only the new lines, so a poll stays small however long the run is.
       const readProgress = async (since?: number): Promise<{ data: { name?: string }[]; next: number } | undefined> => {
         try {
-          const args = since === undefined ? { tool: testGlobalGetTool, name: testGlobalGetName } : { tool: testGlobalGetTool, name: testGlobalGetName, since }
+          const args: any = since === undefined ? { tool: testGlobalGetTool, name: testGlobalGetName } : { tool: testGlobalGetTool, name: testGlobalGetName, since }
           const testGlobalGetResult: any = await $.tool.call(args)
           const text = testGlobalGetResult?.result?.[0]?.text
           if (typeof text !== 'string') {
@@ -273,6 +322,10 @@ export const register: Register = on => {
           if (message !== lastReadError) {
             lastReadError = message
             await addItemToLatestSection($, message, '#e64e4e', true)
+
+            const to: UiLogSink = 'transcript'
+            const options: UiLogOptions = { to }
+            $.ui.log(message, options)
           }
           return undefined
         }
@@ -314,14 +367,14 @@ export const register: Register = on => {
 
   // on('ui.render', { component: 'AskUserQuestion' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
-  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
+  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => renderCommandOutput($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('ui.render', { component: 'InfoNotice' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   //on('ui.render', { component: 'Pane' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('ui.render', { component: 'Spinner' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   // on('ui.render', { component: 'ToolGroup'}, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
-  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
+  on('ui.render', { component: 'ToolProgress' }, async ($, e, next) => renderToolProgress($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   //on('ui.render', { component: 'ToolResult' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   //on('ui.render', { component: 'ToolUse' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => renderMessage($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
@@ -329,9 +382,10 @@ export const register: Register = on => {
 
   // Any button that reports hover: its hint shows in the status bar and in the spot for its place.
   on('ui.message', async ($, e, next) => {
-    // expander tree diagnostics posted by components/expander.tsx (reportShape)
-    //const diagnostic = (e.data as { diagnostic?: unknown } | undefined)?.diagnostic
-    //if (diagnostic !== undefined) $.ui.log(`expander tree: ${JSON.stringify(diagnostic)}`)
+    //$.ui.log('ui.message')
+    // the expander posts its tree as text (components/expander.tsx, `debug`); only the hooks can log it
+    const debug = (e.data as { debug?: unknown } | undefined)?.debug
+    //if (typeof debug === 'string') $.ui.log(`mjg expander tree: ${debug}`)
     const data = e.data as { over?: boolean; hint?: string; place?: 'above' | 'pane' } | undefined
     if (data?.over === undefined || data.place === undefined) return next(e)
     const hint = data.over ? data.hint : undefined
@@ -339,6 +393,10 @@ export const register: Register = on => {
     $.ui.invalidate('ui.render')
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
+
+  // Every $.ui.log line passes here before it is written. Left as is, each line goes where it was sent:
+  // next({ ...e, to: 'debug' }) keeps a line out of the transcript, and returning without next drops it.
+  //on('ui.log', ($, e, next) => next(e)).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   // expander messages
   on('ui.message', { element: 'expander' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
@@ -348,11 +406,11 @@ export const register: Register = on => {
       scroll?: { section: string; offset: number }
     }
     if (data?.log !== undefined) {
-      $.ui.log(data.log)
+      //$.ui.log(data.log)
       return next(e)
     }
     if (data?.toggle) {
-      toggleSection(data.toggle.section, data.toggle.open)
+      await toggleSection($, data.toggle.section, data.toggle.open)
       return { props: expanderProps() }
     }
     if (data?.scroll) {
@@ -387,8 +445,8 @@ export const register: Register = on => {
   on('ui.message', { element: 'toggle' }, async ($: EngineInterface, e: Frozen<Args<'ui.message'>>, next: Next<'ui.message'>) => {
     if ((e.data as { press?: boolean }).press === true) {
       const all = sections().length > 0 && sections().every(s => s.expanded)
-      if (all) collapseAll($)
-      else expandAll($)
+      if (all) await collapseAll($)
+      else await expandAll($)
     }
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
@@ -490,8 +548,8 @@ export const register: Register = on => {
       }
       const { Svg, Image } = ui as { Svg?: any; Image?: any }
       const header = e.surface === 'desktop'
-        ? <Header Box={Box} Text={Text} Svg={Svg} logo={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} version={await versionString($)} />
-        : <Header Box={Box} Text={Text} Image={Image} logo={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} version={await versionString($)} />
+        ? <Header Box={Box} Text={Text} Svg={Svg} logo={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} name="Sencha Claude Code Companion" version={await versionString($)} />
+        : <Header Box={Box} Text={Text} Image={Image} logo={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} name="Sencha Claude Code Companion" version={await versionString($)} />
 
       return (
         <Box flexDirection="column" marginLeft={0} marginTop={0} marginBottom={marginBottom} >
@@ -565,6 +623,7 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     const { Box, Text } = $.ui.resolve(e)
     try {
@@ -599,14 +658,15 @@ export const register: Register = on => {
         if (dropped.length > 0) $.ui.log(`expander props: dropped ${dropped.join(', ')}`)
         const { Svg, Image } = ui as { Svg?: any; Image?: any }
         const header = e.surface === 'desktop'
-          ? <Header Box={Box} Text={Text} Svg={Svg} logo={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} version={await versionString($)} />
-          : <Header Box={Box} Text={Text} Image={Image} logo={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} version={await versionString($)} />
+          ? <Header Box={Box} Text={Text} Svg={Svg} logo={await $.fs.read(`${$.plugin.root}/${LOGO_SVG}`)} name="Sencha Claude Code Companion" version={await versionString($)} />
+          : <Header Box={Box} Text={Text} Image={Image} logo={{ png: (await $.fs.read(`${$.plugin.root}/${LOGO_PNG}`, { as: 'bytes' })).base64 }} name="Sencha Claude Code Companion" version={await versionString($)} />
         return (
           <Box flexDirection="column">
             <Box flexDirection="row">
               {header}
               <Box marginLeft={2}><HoverHint Box={Box} Text={Text} hint={hoverHints.pane} /></Box>
             </Box>
+            <Box marginTop={1}><Text color="cyan" dimColor>{`session: ${sessionId}`}</Text></Box>
             {top(Client, e.surface)}
             {test(Client, e.surface)}
             <Box marginTop={1}><Text color="yellow" italic>STEPS</Text></Box>
