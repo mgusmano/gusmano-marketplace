@@ -31,6 +31,20 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
 * add the answer form the request of ReExt key as the value of the created environment variable
 * always hide the ReExt key from the user and never display it in any output
 * never write the key into the skill or any file in the repo
+* use the environment variable key reference in main.tsx to set the reextkey prop of ReExtProvider
+
+* Call the `AskUserQuestion` tool (not a plain-text prompt) to ask if the user has a design artifact to implement (yes or no);
+
+* if no, do the following: 
+    * for vite require the port to be 1977 - stop the port if it is running
+    * do not do npm run build
+    * do npm run dev
+    * open the app in the browser as a developer build
+    * create a SUMMARY.md in the root folder of the application
+    * complete the skill and exit; 
+
+* if yes, continue to the next step
+
 * Call the `AskUserQuestion` tool (not a plain-text prompt) with all design artifacts as selectable options
 * clear out all of the existing views in the application, do not clear out the public folder
 * create all mock json in a data folder - each source as a separate file - and import into app
