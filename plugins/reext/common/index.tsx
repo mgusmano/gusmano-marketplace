@@ -1,6 +1,8 @@
 import type { EngineInterface } from 'claude-code'
-export const LOGO_SVG = 'common/assets/rapid.svg'
-export const LOGO_PNG = 'common/assets/rapid.png'
+export const LOGO_SVG = 'common/assets/reext.svg'
+export const LOGO_PNG = 'common/assets/reext.png'
+export const logo_only_svg = 'common/assets/reext_logo.svg'
+export const logo_only_png = 'common/assets/reext_logo.png'
 
 
 export async function versionString($: EngineInterface): Promise<string> {

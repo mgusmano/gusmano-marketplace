@@ -1,3 +1,11 @@
+  
+  * create a ReExtApp with the name of the application 
+* use the @sencha/reext npm package readme quickstart for guidence 
+* do ALL steps in the @sencha/reext npm package readme quickstart, including the copy steps
+* use extjs 8.0.0 for sdkversion in ReExtData
+* use modern for toolkit in ReExtData
+* use material for theme in ReExtData
+  
   * call `mcp__plugin_sencha_extjs-tools__custom` (load its schema with ToolSearch first if it is deferred)
    * pass `data` set to the value of `<data>`, as a JSON string
    * pass the tool's response as a JSON code structure in `<response>`

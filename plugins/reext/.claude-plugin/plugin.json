@@ -1,7 +1,7 @@
 {
   "name": "reext",
-  "version": "0.0.01",
-  "description": "mjreextg Claude Code Mod",
+  "version": "0.0.02",
+  "description": "ReExt Claude Code Mod",
   "displayName": "Sencha",
   "types": "./types/index.d.ts",
   "license": "MIT",
@@ -22,6 +22,15 @@
   "privacyPolicyUrl": "https://www.onewave-ai.com/privacy",
   "termsOfServiceUrl": "https://github.com/gusmano-marketplace",
   "mcpServers": {
-
+    "reext-tools": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/MCP/reext-tools/dist/reext-tools.mjs"
+      ],
+      "env": {
+        "PROCESS_RELAY_PORT": "54322"
+      }
+    }
   }
 }
