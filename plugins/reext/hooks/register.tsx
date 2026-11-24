@@ -15,10 +15,10 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     subHeading = `session started...`
     const set = await $.theme.set(LOOK)
-    if (!set.isDrawn) {
-      $.ui.log(set.reason)
-      $.ui.status(set.reason)
-    }
+    // if (!set.isDrawn) {
+    //   $.ui.log(set.reason)
+    //   $.ui.status(set.reason)
+    // }
     return next(e);
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
