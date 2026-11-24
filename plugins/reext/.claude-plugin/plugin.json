@@ -1,8 +1,8 @@
 {
   "name": "reext",
-  "version": "0.0.03",
+  "version": "0.0.04",
   "description": "ReExt Claude Code Mod",
-  "displayName": "Sencha",
+  "displayName": "ReExt",
   "types": "./types/index.d.ts",
   "license": "MIT",
   "author": {
