@@ -27,11 +27,12 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
     - cwd=`<rootFolder>`
     - name=`<appName>`
 * Call the `AskUserQuestion` tool (not a plain-text prompt) to request the ReExt key
-* create an environment variable in .env to hold reextkey
+* create an environment variable in .env to hold reextkey called VITE_REEXT_KEY
 * add the answer form the request of ReExt key as the value of the created environment variable
 * always hide the ReExt key from the user and never display it in any output
 * never write the key into the skill or any file in the repo
-* use the environment variable key reference in main.tsx to set the reextkey prop of ReExtProvider
+* use the environment variable key reference in main.tsx to set reextkey={import.meta.env.VITE_REEXT_KEY} of ReExtProvider
+* change sdkversion in ReExtData.js to "8.1.0"
 
 * Call the `AskUserQuestion` tool (not a plain-text prompt) to ask if the user has a design artifact to implement (yes or no);
 

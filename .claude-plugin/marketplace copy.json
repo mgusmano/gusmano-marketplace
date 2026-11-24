@@ -1,0 +1,20 @@
+{
+  "name": "gusmano-marketplace",
+  "owner": {
+    "name": "Marc Gusmano"
+  },
+  "description": "A collection of plugins from Marc Gusmano",
+  "plugins": [
+    {
+      "name": "sencha",
+      "source": "./plugins/sencha",
+      "description": "A side pane that opens with the Sencha icon at its top"
+    },
+    {
+      "name": "reext",
+      "source": "./plugins/reext",
+      
+      "description": "A plugin that allows you to create a new Sencha ReExt Application"
+    }
+  ]
+}

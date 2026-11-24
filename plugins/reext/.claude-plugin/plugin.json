@@ -1,6 +1,6 @@
 {
   "name": "reext",
-  "version": "0.0.02",
+  "version": "0.0.03",
   "description": "ReExt Claude Code Mod",
   "displayName": "Sencha",
   "types": "./types/index.d.ts",

@@ -1,4 +1,6 @@
 /Users/marcgusmano/gusmano-marketplace/plugins/reext/MCP/reext-tools/dist/logs/reext-tools.log
-main 2026-11-23T18:10:33.550Z reext-tools started, cwd=/Users/marcgusmano/@/webinars/ReExtAI
-shutdown 2026-11-23T18:10:33.909Z shutdown {"reason":"SIGINT"}
-shutdown 2026-11-23T18:10:33.909Z process exit {"code":0,"shuttingDown":true}
+main 2026-11-24T14:57:14.385Z reext-tools started, cwd=/Users/marcgusmano/@/webinars/ReExtAI
+shutdown 2026-11-24T14:57:14.689Z shutdown {"reason":"SIGINT"}
+shutdown 2026-11-24T14:57:14.689Z process exit {"code":0,"shuttingDown":true}
+shutdown 2026-11-24T14:59:10.774Z shutdown {"reason":"SIGTERM"}
+shutdown 2026-11-24T14:59:10.775Z process exit {"code":0,"shuttingDown":true}
