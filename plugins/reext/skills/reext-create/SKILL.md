@@ -40,7 +40,7 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
     * for vite require the port to be 1977 - stop the port if it is running
     * do not do npm run build
     * do npm run dev
-    * open the app in the browser as a developer build
+    * open the app in the in-app browser
     * create a SUMMARY.md in the root folder of the application
     * complete the skill and exit; 
 
@@ -75,6 +75,6 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
 * do not do npm run build
 * do npm run dev
 * for vite require the port to be 1977 - stop the port if it is running
-* open the app in the browser as a developer build
+* open the app in the in-app browser as a developer build
 * verify with puppeteer and screen shots that everything works and all data displays
 * create a SUMMARY.md in the root folder of the application
