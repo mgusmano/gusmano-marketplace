@@ -30,11 +30,16 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
 * set the background color of the root <html> to white in index.html
 * update all dependencies and devDependencies to latest versions and do an npm install
 
-* Call the `AskUserQuestion` tool (not a plain-text prompt) to request the ReExt key
-* if the answer to `AskUserQuestion` to request the ReExt key is skipped, do NOT create an environment variable or reextkey prop, continue with the `AskUserQuestion` tool to ask if the user has a design artifact to implement 
-* if the answer to `AskUserQuestion` to request the ReExt key is a string value, do the following:
+* Call the `AskUserQuestion` tool (not a plain-text prompt) to request the ReExt key, with a "Skip" option
+* Decide first whether a key was given: the answer counts as a key ONLY if it is not empty or whitespace-only after trimming, and is not "skip", "none", "no" or "n/a" (case-insensitive). Any other answer is SKIPPED.
+* if the ReExt key is SKIPPED (including a blank, whitespace-only or skip answer), do NOT do any of the following:
+    * do NOT create or edit .env, and do NOT create the VITE_REEXT_KEY environment variable, not even with an empty value
+    * do NOT add a reextkey prop to ReExtProvider in main.tsx, not even as an empty or undefined value
+    * do NOT write a placeholder key anywhere
+    * then continue with the `AskUserQuestion` tool to ask if the user has a design artifact to implement
+* if the ReExt key is a real key (not SKIPPED), do the following:
     * create an environment variable in .env to hold reextkey called VITE_REEXT_KEY
-    * add the answer form the request of ReExt key as the value of the created environment variable
+    * add the answer from the request of ReExt key as the value of the created environment variable
     * always hide the ReExt key from the user and never display it in any output
     * never write the key into the skill or any file in the repo
     * use the environment variable key reference in main.tsx to set reextkey={import.meta.env.VITE_REEXT_KEY} of ReExtProvider

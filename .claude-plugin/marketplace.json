@@ -6,6 +6,11 @@
   "description": "A collection of plugins from Marc Gusmano",
   "plugins": [
     {
+      "name": "christmas-eve",
+      "source": "./plugins/christmas-eve",
+      "description": "A pixel-art Christmas Eve theme for Claude Code."
+    },
+    {
       "name": "sencha",
       "source": "./plugins/sencha",
       "description": "A side pane that opens with the Sencha icon at its top"
