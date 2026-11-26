@@ -1,0 +1,6 @@
+{
+  "name": "my-mods",
+  "description": "A pixel-art Christmas Eve theme for Claude Code.",
+  "owner": { "name": "mebessusn" },
+  "plugins": [{ "name": "christmas-eve", "source": "./" }]
+}
