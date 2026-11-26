@@ -14,12 +14,29 @@ export async function versionString($: EngineInterface): Promise<string> {
   }
 }
 
+// Full text of a thrown value: JSON.stringify drops an Error's name, message and stack, and a
+// hooks error can carry its details in extra fields, so list every own property too.
+export function describeError(x: any): string {
+  if (x === null || typeof x !== 'object') return String(x)
+  //const head = x instanceof Error || typeof x.message === 'string' ? `${x.name}: ${x.message}\n${x.stack ?? ''}\n` : ''
+  const head = x instanceof Error || typeof x.message === 'string' ? `${x.name}: ${x.message}\n` : ''
+  const fields: Record<string, unknown> = {}
+  for (const k of Object.getOwnPropertyNames(x)) {
+    try { fields[k] = x[k] } catch { fields[k] = '<unreadable>' }
+  }
+  let body: string
+  try {
+    body = JSON.stringify(fields, (_, v) => (v instanceof Error ? { name: v.name, message: v.message, stack: v.stack } : v), 2)
+  } catch {
+    body = String(x)
+  }
+  //return head + body
+  return head
+}
+
 export function doError($: any, e: any, next?: { error?: { kind?: string; message?: string } }) {
   const f = next?.error
   const why = f ? ` (${f.kind}: ${f.message ?? ''})` : ''
-  // JSON.stringify drops an Error's message, so show name and message for those
-  const detail = e instanceof Error || typeof e?.message === 'string' ? `${e.name}: ${e.message}` : JSON.stringify(e)
-  //$.ui.log(`doError3 error${why}: ${detail}`)
-  $.ui.log(`doError3 error${why}`)
- // $.ui.log(`doError2 error:${JSON.stringify(next)}`)
+  $.ui.log(`error: ${describeError(e)}`)
+
 }

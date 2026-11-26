@@ -113,6 +113,7 @@ export const register: Register = on => {
     sessionId = await $.session.id()
     setSessionTag(sessionId)
     await $.command.register({ name: 'sencha', description: 'open the Sencha side pane' })
+    await $.command.register({ name: 'show-pane', description: 'show the Sencha pane' })
     await $.command.register({ name: 'callit', description: 'call a tool' })
     await $.command.register({ name: 'ask', description: 'ask example' })
 
@@ -170,6 +171,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
   on('command.run', { command: 'sencha' }, async $ => commandSencha($)).catch(($, e, next) => { doError($, e, next); return next(e) });
+  on('command.run', { command: 'show-pane' }, async $ => commandSencha($)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('command.run', { command: 'callit' }, async $ => commandCallit($)).catch(($, e, next) => { doError($, e, next); return next(e) });
   on('command.run', { command: 'ask' }, async ($, e, next) => commandAsk($, e, next)).catch(($, e, next) => { doError($, e, next); return next(e) });
 

@@ -26,16 +26,20 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
     - progress=true
     - cwd=`<rootFolder>`
     - name=`<appName>`
-* Call the `AskUserQuestion` tool (not a plain-text prompt) to request the ReExt key
-* create an environment variable in .env to hold reextkey called VITE_REEXT_KEY
-* add the answer form the request of ReExt key as the value of the created environment variable
-* always hide the ReExt key from the user and never display it in any output
-* never write the key into the skill or any file in the repo
-* use the environment variable key reference in main.tsx to set reextkey={import.meta.env.VITE_REEXT_KEY} of ReExtProvider
 * change sdkversion in ReExtData.js to "8.1.0"
+* set the background color of the root <html> to white in index.html
+* update all dependencies and devDependencies to latest versions and do an npm install
+
+* Call the `AskUserQuestion` tool (not a plain-text prompt) to request the ReExt key
+* if the answer to `AskUserQuestion` to request the ReExt key is skipped, do NOT create an environment variable or reextkey prop, continue with the `AskUserQuestion` tool to ask if the user has a design artifact to implement 
+* if the answer to `AskUserQuestion` to request the ReExt key is a string value, do the following:
+    * create an environment variable in .env to hold reextkey called VITE_REEXT_KEY
+    * add the answer form the request of ReExt key as the value of the created environment variable
+    * always hide the ReExt key from the user and never display it in any output
+    * never write the key into the skill or any file in the repo
+    * use the environment variable key reference in main.tsx to set reextkey={import.meta.env.VITE_REEXT_KEY} of ReExtProvider
 
 * Call the `AskUserQuestion` tool (not a plain-text prompt) to ask if the user has a design artifact to implement (yes or no);
-
 * if no, do the following: 
     * for vite require the port to be 1977 - stop the port if it is running
     * do not do npm run build
@@ -43,7 +47,6 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
     * open the app in the in-app browser
     * create a SUMMARY.md in the root folder of the application
     * complete the skill and exit; 
-
 * if yes, continue to the next step
 
 * Call the `AskUserQuestion` tool (not a plain-text prompt) with all design artifacts as selectable options
@@ -71,7 +74,6 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
 ```javascript
     <ReExt xtype='logo'/>
 ```
-* update all dependencies and devDependencies to latest versions and do an npm install
 * do not do npm run build
 * do npm run dev
 * for vite require the port to be 1977 - stop the port if it is running
