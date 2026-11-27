@@ -44,7 +44,7 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
     * never write the key into the skill or any file in the repo
     * use the environment variable key reference in main.tsx to set reextkey={import.meta.env.VITE_REEXT_KEY} of ReExtProvider
 
-* Call the `AskUserQuestion` tool (not a plain-text prompt) to ask if the user has a design artifact to implement (yes or no) - show each artifact as a clickable link;
+* Call the `AskUserQuestion` tool (not a plain-text prompt) to ask if the user has a design artifact to implement (yes or no) - show each artifact as a clickable link in the `AskUserQuestion` options
 * if no, do the following: 
     * for vite require the port to be 1977 - stop the port if it is running
     * do not do npm run build
@@ -73,9 +73,10 @@ Update the progress after every tool call.  For mcp__ccd_turn__update_plan you m
 * use any and all connectors used by the artifact in the ReExt application as the source of data
 * make sure all grid row cells display actual data, not the tpl text - no span displayed, should be rendered - use encodeHtml: false
 * make sure all buttons render exactly as in the artifact
-* make sure all headers render exactly as in the artifact
+* make sure all grid and chart headers render exactly as in the artifact
 * make sure all charts render exactly as in the artifact
 * make sure all kpi's render exactly as in the artifact - each kpi's border needs to be correct width
+* spread out the kpi's to render completely across the page width, not bunched up in the center
 * after the selected artifact is completely implemented, add this JSX as the first child of the main page root element
 ```javascript
     <ReExt xtype='logo'/>
