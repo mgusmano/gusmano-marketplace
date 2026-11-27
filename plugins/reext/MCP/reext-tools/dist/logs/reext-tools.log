@@ -1,19 +1,19 @@
 /Users/marcgusmano/gusmano-marketplace/plugins/reext/MCP/reext-tools/dist/logs/reext-tools.log
-main 2026-11-26T15:47:53.257Z reext-tools started, cwd=/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps
-shutdown 2026-11-26T15:47:53.637Z shutdown {"reason":"SIGINT"}
-shutdown 2026-11-26T15:47:53.638Z process exit {"code":0,"shuttingDown":true}
-reext-create-app 2026-11-26T15:48:15.814Z params
+main 2026-11-26T16:00:11.918Z reext-tools started, cwd=/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps
+shutdown 2026-11-26T16:00:40.093Z shutdown {"reason":"SIGINT"}
+shutdown 2026-11-26T16:00:40.093Z process exit {"code":0,"shuttingDown":true}
+reext-create-app 2026-11-26T16:01:11.839Z params
 {
  "cwd": "/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps",
- "name": "ReExtApp"
+ "name": "MyApp"
 }
-reext-create-app 2026-11-26T15:48:15.814Z 
+reext-create-app 2026-11-26T16:01:11.840Z 
 {
  "command": "npm",
  "args": [
   "create",
   "vite@latest",
-  "ReExtApp",
+  "MyApp",
   "--",
   "--template",
   "react",
@@ -21,60 +21,60 @@ reext-create-app 2026-11-26T15:48:15.814Z
  ],
  "cwd": "/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps"
 }
-notifyProgress 2026-11-26T15:48:15.817Z notifications/progress MCP sending {"message":"\n*** command: npm create,vite@latest,ReExtApp,--,--template,react,--no-interactive","progressToken":2}
-notifyProgress 2026-11-26T15:48:15.817Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:15.833Z notifyMain FAIL {"message":"\n*** command: npm create,vite@latest,ReExtApp,--,--template,react,--no-interactive","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:16.162Z notifications/progress MCP sending {"message":"\n> npx\n> cva ReExtApp --template react --no-interactive","progressToken":2}
-notifyProgress 2026-11-26T15:48:16.162Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:16.164Z notifyMain FAIL {"message":"\n> npx\n> cva ReExtApp --template react --no-interactive","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:16.205Z notifications/progress MCP sending {"message":"\ncreate-vite v9.4.0","progressToken":2}
-notifyProgress 2026-11-26T15:48:16.206Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:16.207Z notifications/progress MCP sending {"message":"│\n◇  Scaffolding project in /Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp...","progressToken":2}
-notifyProgress 2026-11-26T15:48:16.207Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:16.208Z notifyMain FAIL {"message":"\ncreate-vite v9.4.0","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:16.208Z notifyMain FAIL {"message":"│\n◇  Scaffolding project in /Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp...","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:16.212Z notifications/progress MCP sending {"message":"│\n└  Done. Now run:\n\n  cd ReExtApp\n  npm install\n  npm run dev","progressToken":2}
-notifyProgress 2026-11-26T15:48:16.212Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:16.213Z notifyMain FAIL {"message":"│\n└  Done. Now run:\n\n  cd ReExtApp\n  npm install\n  npm run dev","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:16.219Z return
-reext-create-app 2026-11-26T15:48:16.219Z 
+notifyProgress 2026-11-26T16:01:11.841Z notifications/progress MCP sending {"message":"\n*** command: npm create,vite@latest,MyApp,--,--template,react,--no-interactive","progressToken":2}
+notifyProgress 2026-11-26T16:01:11.842Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:11.859Z notifyMain FAIL {"message":"\n*** command: npm create,vite@latest,MyApp,--,--template,react,--no-interactive","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:12.390Z notifications/progress MCP sending {"message":"\n> npx\n> 'cva' MyApp --template react --no-interactive","progressToken":2}
+notifyProgress 2026-11-26T16:01:12.390Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:12.391Z notifyMain FAIL {"message":"\n> npx\n> 'cva' MyApp --template react --no-interactive","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:12.438Z notifications/progress MCP sending {"message":"\ncreate-vite v9.4.0","progressToken":2}
+notifyProgress 2026-11-26T16:01:12.439Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:12.439Z notifications/progress MCP sending {"message":"│\n◇  Scaffolding project in /Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp...","progressToken":2}
+notifyProgress 2026-11-26T16:01:12.439Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:12.440Z notifyMain FAIL {"message":"\ncreate-vite v9.4.0","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:12.440Z notifyMain FAIL {"message":"│\n◇  Scaffolding project in /Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp...","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:12.445Z notifications/progress MCP sending {"message":"│\n└  Done. Now run:\n\n  cd MyApp\n  npm install\n  npm run dev","progressToken":2}
+notifyProgress 2026-11-26T16:01:12.446Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:12.446Z notifyMain FAIL {"message":"│\n└  Done. Now run:\n\n  cd MyApp\n  npm install\n  npm run dev","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:12.454Z return
+reext-create-app 2026-11-26T16:01:12.454Z 
 {
  "command": "npm",
  "args": [
   "install",
   "@vitejs/plugin-react"
  ],
- "cwd": "/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp"
+ "cwd": "/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp"
 }
-notifyProgress 2026-11-26T15:48:16.220Z notifications/progress MCP sending {"message":"\n*** command: npm install,@vitejs/plugin-react","progressToken":2}
-notifyProgress 2026-11-26T15:48:16.220Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:16.221Z notifyMain FAIL {"message":"\n*** command: npm install,@vitejs/plugin-react","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:21.503Z notifications/progress MCP sending {"message":"\nadded 24 packages, and audited 25 packages in 5s","progressToken":2}
-notifyProgress 2026-11-26T15:48:21.503Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:21.504Z notifications/progress MCP sending {"message":"\n9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","progressToken":2}
-notifyProgress 2026-11-26T15:48:21.504Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:21.504Z notifyMain FAIL {"message":"\nadded 24 packages, and audited 25 packages in 5s","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:21.504Z notifyMain FAIL {"message":"\n9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:21.515Z return
-reext-create-app 2026-11-26T15:48:21.515Z 
+notifyProgress 2026-11-26T16:01:12.455Z notifications/progress MCP sending {"message":"\n*** command: npm install,@vitejs/plugin-react","progressToken":2}
+notifyProgress 2026-11-26T16:01:12.455Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:12.456Z notifyMain FAIL {"message":"\n*** command: npm install,@vitejs/plugin-react","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:15.115Z notifications/progress MCP sending {"message":"\nadded 24 packages, and audited 25 packages in 3s","progressToken":2}
+notifyProgress 2026-11-26T16:01:15.115Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:15.117Z notifications/progress MCP sending {"message":"9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","progressToken":2}
+notifyProgress 2026-11-26T16:01:15.117Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:15.117Z notifyMain FAIL {"message":"\nadded 24 packages, and audited 25 packages in 3s","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:15.118Z notifyMain FAIL {"message":"9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:15.130Z return
+reext-create-app 2026-11-26T16:01:15.131Z 
 {
  "command": "npm",
  "args": [
   "install",
   "@sencha/reext@latest"
  ],
- "cwd": "/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp"
+ "cwd": "/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp"
 }
-notifyProgress 2026-11-26T15:48:21.516Z notifications/progress MCP sending {"message":"\n*** command: npm install,@sencha/reext@latest","progressToken":2}
-notifyProgress 2026-11-26T15:48:21.516Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:21.518Z notifyMain FAIL {"message":"\n*** command: npm install,@sencha/reext@latest","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:21.964Z notifications/progress MCP sending {"message":"\nadded 2 packages, and audited 27 packages in 388ms","progressToken":2}
-notifyProgress 2026-11-26T15:48:21.965Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:21.965Z notifications/progress MCP sending {"message":"\n9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","progressToken":2}
-notifyProgress 2026-11-26T15:48:21.966Z notifyMain: port 54322 {}
-notifyProgress 2026-11-26T15:48:21.966Z notifyMain FAIL {"message":"\nadded 2 packages, and audited 27 packages in 388ms","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:21.967Z notifyMain FAIL {"message":"\n9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","port":54322,"error":"fetch failed"}
-notifyProgress 2026-11-26T15:48:21.970Z return
-reext-create-app 2026-11-26T15:48:21.971Z return {"result":"success","text":"ReExt-ready React app created at /Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp","cwd":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps","name":"ReExtApp","appPath":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp","copiedFiles":["/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/vite.config.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/src/App.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/src/main.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/src/ReExtData.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/public/ReExt.png"],"content":{"cwd":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps","name":"ReExtApp","appPath":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp","copiedFiles":["/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/vite.config.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/src/App.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/src/main.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/src/ReExtData.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/ReExtApp/public/ReExt.png"]}}
-shutdown 2026-11-26T15:51:51.949Z shutdown {"reason":"SIGINT"}
-shutdown 2026-11-26T15:51:51.957Z process exit {"code":0,"shuttingDown":true}
+notifyProgress 2026-11-26T16:01:15.132Z notifications/progress MCP sending {"message":"\n*** command: npm install,@sencha/reext@latest","progressToken":2}
+notifyProgress 2026-11-26T16:01:15.132Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:15.133Z notifyMain FAIL {"message":"\n*** command: npm install,@sencha/reext@latest","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:16.582Z notifications/progress MCP sending {"message":"\nadded 2 packages, and audited 27 packages in 1s","progressToken":2}
+notifyProgress 2026-11-26T16:01:16.582Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:16.583Z notifications/progress MCP sending {"message":"\n9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","progressToken":2}
+notifyProgress 2026-11-26T16:01:16.583Z notifyMain: port 54322 {}
+notifyProgress 2026-11-26T16:01:16.584Z notifyMain FAIL {"message":"\nadded 2 packages, and audited 27 packages in 1s","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:16.584Z notifyMain FAIL {"message":"\n9 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities","port":54322,"error":"fetch failed"}
+notifyProgress 2026-11-26T16:01:16.588Z return
+reext-create-app 2026-11-26T16:01:16.589Z return {"result":"success","text":"ReExt-ready React app created at /Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp","cwd":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps","name":"MyApp","appPath":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp","copiedFiles":["/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/vite.config.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/src/App.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/src/main.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/src/ReExtData.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/public/ReExt.png"],"content":{"cwd":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps","name":"MyApp","appPath":"/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp","copiedFiles":["/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/vite.config.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/src/App.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/src/main.jsx","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/src/ReExtData.js","/Users/marcgusmano/@/webinars/ReExtAI/ReExtAIApps/MyApp/public/ReExt.png"]}}
+shutdown 2026-11-26T16:02:24.244Z shutdown {"reason":"SIGINT"}
+shutdown 2026-11-26T16:02:24.244Z process exit {"code":0,"shuttingDown":true}
