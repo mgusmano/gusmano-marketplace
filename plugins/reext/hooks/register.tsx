@@ -23,7 +23,7 @@ export const register: Register = on => {
 
   on('plugin.register', async ($, e, next) => {
     // runs before session.start; set up anything that must exist early here
-    $.ui.log('ReExt plugin registered')
+    // $.ui.log('ReExt plugin registered')
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
@@ -31,7 +31,7 @@ export const register: Register = on => {
     subHeading = `session started...`
 
 
-    //const set = await $.theme.set(LOOK)
+    const set = await $.theme.set(LOOK)
 
     // if (!set.isDrawn) {
     //   $.ui.log(set.reason)

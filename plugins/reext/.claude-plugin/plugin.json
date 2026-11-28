@@ -1,6 +1,6 @@
 {
   "name": "reext",
-  "version": "0.0.83",
+  "version": "0.0.84",
   "description": "ReExt Claude Code Mod",
   "displayName": "ReExt",
   "types": "./types/index.d.ts",
