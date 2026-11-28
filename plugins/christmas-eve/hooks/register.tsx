@@ -47,7 +47,7 @@ export const register: Register = on => {
     if (unpainted !== undefined) $.ui.toast(unpainted)
 
     const set = await $.theme.set(LOOK)
-    if (!set.isDrawn) $.ui.status(set.reason)
+    // if (!set.isDrawn) $.ui.status(set.reason)
 
     await $.command.register({ name: 'santa', description: 'show or hide Santa\'s sleigh (args: show | hide; none toggles)' })
     await $.command.register({ name: 'snow', description: 'show or hide the falling snow (args: show | hide; none toggles)' })

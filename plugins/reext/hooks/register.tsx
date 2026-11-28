@@ -23,7 +23,7 @@ export const register: Register = on => {
 
   on('plugin.register', async ($, e, next) => {
     // runs before session.start; set up anything that must exist early here
-    // $.ui.log('ReExt plugin registered')
+    $.ui.log('ReExt plugin registered')
     return next(e)
   }).catch(($, e, next) => { doError($, e, next); return next(e) });
 
